@@ -580,13 +580,19 @@ function renderTransactionHighlights() {
   const pendingCount = monthTransactions.filter((item) => item.status !== "paid").length;
   const pixCount = monthTransactions.filter((item) => item.paymentMethod === "pix").length;
   const creditCount = monthTransactions.filter((item) => item.paymentMethod === "credit").length;
-  const totalAmount = monthTransactions.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const totalIncome = monthTransactions
+    .filter((item) => item.type === "income")
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const totalOutflow = monthTransactions
+    .filter((item) => item.type !== "income")
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
   target.innerHTML = `
     <article class="mini-stat-card">
       <span>No mes</span>
       <strong>${monthTransactions.length} lancamentos</strong>
-      <small>${money(totalAmount)} movimentados</small>
+      <small>Entradas: ${money(totalIncome)}</small>
+      <small>Saidas: ${money(totalOutflow)}</small>
     </article>
     <article class="mini-stat-card">
       <span>Status</span>
