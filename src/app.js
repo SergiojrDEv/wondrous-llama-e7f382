@@ -111,7 +111,7 @@ const els = {
   authNote: document.querySelector("#auth-note"),
   authTitle: document.querySelector("#auth-title"),
   installApp: document.querySelector("#install-app"),
-  installAppPanel: document.querySelector("#install-app-panel"),
+  fabTransaction: document.querySelector("#fab-transaction"),
 };
 
 const formatter = new Intl.NumberFormat("pt-BR", {
@@ -316,11 +316,9 @@ function updateInstallButton() {
   if (!els.installApp) return;
   const standalone = isStandaloneMode();
   els.installApp.classList.toggle("is-hidden", standalone);
-  if (els.installAppPanel) els.installAppPanel.classList.toggle("is-hidden", standalone);
   if (standalone) return;
   const label = state.deferredInstallPrompt ? "Instalar app" : "Como instalar";
   els.installApp.textContent = label;
-  if (els.installAppPanel) els.installAppPanel.textContent = label;
 }
 
 function setupPwaSupport() {
@@ -2052,6 +2050,7 @@ function renderAuthGate(message) {
   els.appShell.classList.toggle("is-hidden", !isLogged);
   els.sidebar.classList.toggle("is-hidden", !isLogged);
   if (els.mobileNav) els.mobileNav.classList.toggle("is-hidden", !isLogged);
+  if (els.fabTransaction) els.fabTransaction.classList.toggle("is-hidden", !isLogged);
   if (message) els.authNote.textContent = message;
   else if (!state.cloudReady) els.authNote.textContent = "Preparando acesso...";
   else els.authNote.textContent = isLogged ? "Sessao conectada." : "Entre para continuar.";
@@ -2548,10 +2547,14 @@ function bindEvents() {
   });
   document.querySelector("#seed-data").addEventListener("click", seedData);
   document.querySelector("#install-app").addEventListener("click", promptInstallApp);
-  document.querySelector("#install-app-panel").addEventListener("click", promptInstallApp);
   document.querySelectorAll(".segment").forEach((button) =>
     button.addEventListener("click", () => setActiveType(button.dataset.type))
   );
+  document.querySelector("#fab-transaction").addEventListener("click", () => {
+    location.hash = "novo-lancamento";
+    setSectionFromHash();
+    document.querySelector("#description").focus();
+  });
   els.form.addEventListener("submit", addTransaction);
   document.querySelector("#category-form").addEventListener("submit", addCategory);
   document.querySelector("#account-form").addEventListener("submit", addAccount);
