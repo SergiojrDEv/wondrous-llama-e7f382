@@ -111,7 +111,6 @@ const els = {
   authNote: document.querySelector("#auth-note"),
   authTitle: document.querySelector("#auth-title"),
   installApp: document.querySelector("#install-app"),
-  fabTransaction: document.querySelector("#fab-transaction"),
 };
 
 const formatter = new Intl.NumberFormat("pt-BR", {
@@ -2050,7 +2049,6 @@ function renderAuthGate(message) {
   els.appShell.classList.toggle("is-hidden", !isLogged);
   els.sidebar.classList.toggle("is-hidden", !isLogged);
   if (els.mobileNav) els.mobileNav.classList.toggle("is-hidden", !isLogged);
-  if (els.fabTransaction) els.fabTransaction.classList.toggle("is-hidden", !isLogged);
   if (message) els.authNote.textContent = message;
   else if (!state.cloudReady) els.authNote.textContent = "Preparando acesso...";
   else els.authNote.textContent = isLogged ? "Sessao conectada." : "Entre para continuar.";
@@ -2545,16 +2543,10 @@ function bindEvents() {
     location.hash = "lancamentos-mes";
     setSectionFromHash();
   });
-  document.querySelector("#seed-data").addEventListener("click", seedData);
   document.querySelector("#install-app").addEventListener("click", promptInstallApp);
   document.querySelectorAll(".segment").forEach((button) =>
     button.addEventListener("click", () => setActiveType(button.dataset.type))
   );
-  document.querySelector("#fab-transaction").addEventListener("click", () => {
-    location.hash = "novo-lancamento";
-    setSectionFromHash();
-    document.querySelector("#description").focus();
-  });
   els.form.addEventListener("submit", addTransaction);
   document.querySelector("#category-form").addEventListener("submit", addCategory);
   document.querySelector("#account-form").addEventListener("submit", addAccount);
