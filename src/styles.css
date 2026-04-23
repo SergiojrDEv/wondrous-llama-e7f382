@@ -803,7 +803,7 @@ td {
 
 .budget-card {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .budget-card header,
@@ -811,7 +811,7 @@ td {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 4px;
 }
 
 .budget-card strong,
@@ -825,28 +825,50 @@ td {
   font-weight: 700;
 }
 
-.budget-rule-block {
-  display: grid;
-  gap: 8px;
+.budget-card-header {
+  align-items: center;
 }
 
-.budget-rule-line {
+.budget-badges {
   display: flex;
-  align-items: end;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.budget-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #f3f6fb;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.budget-meter {
+  display: grid;
+  gap: 6px;
+}
+
+.budget-meter-head {
+  display: flex;
   justify-content: space-between;
   gap: 12px;
+  align-items: baseline;
 }
 
-.budget-rule-line span {
-  display: block;
+.budget-meter-head span {
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 800;
   text-transform: uppercase;
 }
 
-.budget-rule-line strong {
-  font-size: 0.98rem;
+.budget-meter-head small {
+  font-size: 0.82rem;
 }
 
 .budget-rule-form {
@@ -854,19 +876,28 @@ td {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   align-items: end;
-  padding-top: 6px;
+  padding-top: 4px;
+  margin-top: 2px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
 }
 
 .budget-rule-form label {
   display: grid;
-  gap: 6px;
-  font-size: 0.8rem;
+  gap: 5px;
+  font-size: 0.74rem;
   font-weight: 800;
   color: var(--muted);
 }
 
 .budget-rule-form input {
   min-width: 0;
+  min-height: 38px;
+}
+
+.budget-rule-form.compact .mini-btn {
+  min-height: 38px;
+  align-self: stretch;
 }
 
 .daily-history-list {
@@ -1172,6 +1203,15 @@ td {
     grid-template-columns: 1fr;
   }
 
+  .budget-card-header,
+  .budget-meter-head {
+    display: grid;
+  }
+
+  .budget-badges {
+    justify-content: flex-start;
+  }
+
   .goal-summary-grid {
     grid-template-columns: 1fr;
   }
@@ -1231,6 +1271,11 @@ td {
   .budget-rule-form,
   .history-day-header,
   .history-row {
+    display: grid;
+  }
+
+  .budget-card-header,
+  .budget-meter-head {
     display: grid;
   }
 

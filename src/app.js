@@ -712,39 +712,38 @@ function renderBudgets() {
         .reduce((sum, item) => sum + Number(item.amount), 0);
       const monthlyPct = rule.monthly ? Math.min((monthlyUsed / rule.monthly) * 100, 100) : 0;
       const weeklyPct = rule.weekly ? Math.min((weeklyUsed / rule.weekly) * 100, 100) : 0;
+      const weeklyStatus = weeklyPct >= 100 ? "Limite semanal" : `${weeklyPct.toFixed(0)}%`;
+      const monthlyStatus = monthlyPct >= 100 ? "Limite mensal" : `${monthlyPct.toFixed(0)}%`;
       return `
         <article class="budget-card">
-          <header>
+          <header class="budget-card-header">
             <strong>${esc(label)}</strong>
-            <small>Semana ${weeklyPct.toFixed(0)}% | Mes ${monthlyPct.toFixed(0)}%</small>
+            <div class="budget-badges">
+              <span class="budget-badge">Sem ${weeklyStatus}</span>
+              <span class="budget-badge">Mes ${monthlyStatus}</span>
+            </div>
           </header>
-          <div class="budget-rule-block">
-            <div class="budget-rule-line">
-              <div>
-                <span>Semana em foco</span>
-                <strong>${money(weeklyUsed)}</strong>
-              </div>
-              <small>de ${money(rule.weekly)}</small>
+          <div class="budget-meter">
+            <div class="budget-meter-head">
+              <span>Semana</span>
+              <small>${money(weeklyUsed)} de ${money(rule.weekly)}</small>
             </div>
             <div class="bar"><span style="--value:${weeklyPct}%;--color:${color}"></span></div>
           </div>
-          <div class="budget-rule-block">
-            <div class="budget-rule-line">
-              <div>
-                <span>Mes atual</span>
-                <strong>${money(monthlyUsed)}</strong>
-              </div>
-              <small>de ${money(rule.monthly)}</small>
+          <div class="budget-meter">
+            <div class="budget-meter-head">
+              <span>Mes</span>
+              <small>${money(monthlyUsed)} de ${money(rule.monthly)}</small>
             </div>
             <div class="bar"><span style="--value:${monthlyPct}%;--color:${color}"></span></div>
           </div>
-          <form class="budget-rule-form" data-budget-key="${esc(key)}">
+          <form class="budget-rule-form compact" data-budget-key="${esc(key)}">
             <label>
-              Limite semanal
+              Semanal
               <input type="number" min="0" step="0.01" name="weekly" value="${Number(rule.weekly || 0)}">
             </label>
             <label>
-              Limite mensal
+              Mensal
               <input type="number" min="0" step="0.01" name="monthly" value="${Number(rule.monthly || 0)}">
             </label>
             <button class="mini-btn" type="submit">Salvar regra</button>
