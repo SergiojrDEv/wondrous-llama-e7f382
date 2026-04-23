@@ -61,6 +61,7 @@ const state = {
   syncTimer: null,
   supabaseInitPromise: null,
   pendingImport: null,
+  authView: "login",
 };
 
 const els = {
@@ -1123,6 +1124,11 @@ async function initSupabase() {
   state.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
   state.cloudReady = true;
 
+  if (location.hash.includes("type=recovery") || location.hash.includes("access_token=")) {
+    showAuthView("update-password");
+    renderAuthGate("Defina sua nova senha para continuar.");
+  }
+
   const { data } = await state.supabaseClient.auth.getSession();
   if (data.session?.user && !isEmailConfirmed(data.session.user)) {
     await state.supabaseClient.auth.signOut();
@@ -1201,6 +1207,42 @@ function renderAuthGate(message) {
 
 function isEmailConfirmed(user) {
   return Boolean(user?.email_confirmed_at || user?.confirmed_at);
+}
+
+async function requestPasswordReset(event) {
+  if (event) event.preventDefault();
+  if (!(await ensureSupabaseReady())) return;
+  const email = document.querySelector("#reset-email").value.trim();
+  if (!email) return notify("Informe seu e-mail.");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return notify("Informe um e-mail valido.");
+
+  const { error } = await state.supabaseClient.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.href.split("#")[0],
+  });
+  if (error) return notify(error.message);
+  showAuthView("login");
+  document.querySelector("#login-email").value = email;
+  renderAuthGate("Verifique seu e-mail para redefinir a senha.");
+  notify("Link de recuperacao enviado.");
+}
+
+async function updatePassword(event) {
+  if (event) event.preventDefault();
+  if (!(await ensureSupabaseReady())) return;
+  const password = document.querySelector("#update-password").value;
+  const confirmPassword = document.querySelector("#update-password-confirm").value;
+  if (password.length < 6) return notify("A senha deve ter pelo menos 6 caracteres.");
+  if (password !== confirmPassword) return notify("As senhas nao conferem.");
+
+  const { error } = await state.supabaseClient.auth.updateUser({ password });
+  if (error) return notify(error.message);
+
+  document.querySelector("#update-password").value = "";
+  document.querySelector("#update-password-confirm").value = "";
+  location.hash = "";
+  showAuthView("login");
+  renderAuthGate("Senha atualizada. Entre com a nova senha.");
+  notify("Senha atualizada com sucesso.");
 }
 
 async function signInSupabase(event) {
@@ -1351,11 +1393,28 @@ function formatPhone(value) {
 }
 
 function showAuthView(view) {
+  state.authView = view;
   const isSignup = view === "signup";
-  document.querySelector("#login-form").classList.toggle("is-hidden", isSignup);
+  const isReset = view === "reset";
+  const isUpdatePassword = view === "update-password";
+  document.querySelector("#login-form").classList.toggle("is-hidden", isSignup || isReset || isUpdatePassword);
   document.querySelector("#signup-form").classList.toggle("is-hidden", !isSignup);
-  els.authTitle.textContent = isSignup ? "Crie sua conta" : "Acesse sua conta";
-  els.authNote.textContent = isSignup ? "Preencha seus dados para criar o acesso." : "Entre para continuar.";
+  document.querySelector("#reset-form").classList.toggle("is-hidden", !isReset);
+  document.querySelector("#update-password-form").classList.toggle("is-hidden", !isUpdatePassword);
+  els.authTitle.textContent = isSignup
+    ? "Crie sua conta"
+    : isReset
+      ? "Recupere sua senha"
+      : isUpdatePassword
+        ? "Defina uma nova senha"
+        : "Acesse sua conta";
+  els.authNote.textContent = isSignup
+    ? "Preencha seus dados para criar o acesso."
+    : isReset
+      ? "Enviaremos um link para redefinir sua senha."
+      : isUpdatePassword
+        ? "Informe a nova senha para concluir a recuperacao."
+        : "Entre para continuar.";
 }
 
 async function saveUserProfileFromMetadata(user) {
@@ -1626,12 +1685,23 @@ function bindEvents() {
   document.querySelector("#card-form").addEventListener("submit", addCreditCard);
   document.querySelector("#goal-form").addEventListener("submit", addGoal);
   document.querySelector("#login-form").addEventListener("submit", signInSupabase);
+  document.querySelector("#login-reset").addEventListener("click", () => {
+    document.querySelector("#reset-email").value = document.querySelector("#login-email").value.trim();
+    showAuthView("reset");
+  });
   document.querySelector("#login-create").addEventListener("click", () => showAuthView("signup"));
   document.querySelector("#signup-back").addEventListener("click", () => showAuthView("login"));
+  document.querySelector("#reset-back").addEventListener("click", () => showAuthView("login"));
+  document.querySelector("#update-password-back").addEventListener("click", () => {
+    location.hash = "";
+    showAuthView("login");
+  });
   document.querySelector("#signup-form").addEventListener("submit", (event) => {
     event.preventDefault();
     signUpSupabase();
   });
+  document.querySelector("#reset-form").addEventListener("submit", requestPasswordReset);
+  document.querySelector("#update-password-form").addEventListener("submit", updatePassword);
   document.querySelector("#signup-cpf").addEventListener("input", (event) => {
     event.target.value = formatCpf(event.target.value);
   });

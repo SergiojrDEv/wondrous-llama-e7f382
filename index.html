@@ -38,6 +38,7 @@
           <input id="login-password" type="password" placeholder="Sua senha" autocomplete="current-password" minlength="6" required>
         </label>
         <button class="primary-btn full" id="login-submit" type="submit">Entrar</button>
+        <button class="ghost-btn full" id="login-reset" type="button">Esqueci minha senha</button>
         <button class="ghost-btn full" id="login-create" type="button">Criar conta</button>
       </form>
 
@@ -70,6 +71,28 @@
         </label>
         <button class="primary-btn full" id="signup-submit" type="submit">Criar conta</button>
         <button class="ghost-btn full" id="signup-back" type="button">Voltar para login</button>
+      </form>
+
+      <form class="auth-form is-hidden" id="reset-form" data-auth-view="reset">
+        <label>
+          E-mail
+          <input id="reset-email" type="email" placeholder="seu@email.com" autocomplete="email" required>
+        </label>
+        <button class="primary-btn full" id="reset-submit" type="submit">Enviar link de recuperacao</button>
+        <button class="ghost-btn full" id="reset-back" type="button">Voltar para login</button>
+      </form>
+
+      <form class="auth-form is-hidden" id="update-password-form" data-auth-view="update-password">
+        <label>
+          Nova senha
+          <input id="update-password" type="password" placeholder="Minimo 6 caracteres" autocomplete="new-password" minlength="6" required>
+        </label>
+        <label>
+          Confirmar nova senha
+          <input id="update-password-confirm" type="password" placeholder="Repita a nova senha" autocomplete="new-password" minlength="6" required>
+        </label>
+        <button class="primary-btn full" id="update-password-submit" type="submit">Salvar nova senha</button>
+        <button class="ghost-btn full" id="update-password-back" type="button">Voltar para login</button>
       </form>
 
       <p class="auth-note" id="auth-note">Entre para continuar.</p>
