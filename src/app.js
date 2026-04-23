@@ -217,8 +217,12 @@ function updateCreditCardOptions() {
 
 function updateCreditPaymentFields() {
   const isCredit = document.querySelector("#payment-method").value === "credit";
-  document.querySelector("#credit-card-field").classList.toggle("is-hidden", !isCredit);
-  document.querySelector("#installments-field").classList.toggle("is-hidden", !isCredit);
+  const cardField = document.querySelector("#credit-card-field");
+  const installmentsField = document.querySelector("#installments-field");
+  cardField.classList.toggle("is-hidden", !isCredit);
+  installmentsField.classList.toggle("is-hidden", !isCredit);
+  cardField.hidden = !isCredit;
+  installmentsField.hidden = !isCredit;
   if (!isCredit) {
     document.querySelector("#credit-card").value = "";
     document.querySelector("#installments").value = 1;
