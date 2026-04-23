@@ -1,0 +1,26 @@
+{
+  "name": "Finance Flow",
+  "short_name": "Finance Flow",
+  "description": "Controle financeiro pessoal com metas, categorias, lancamentos e sincronizacao em nuvem.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3f7fb",
+  "theme_color": "#111827",
+  "icons": [
+    {
+      "src": "./app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
