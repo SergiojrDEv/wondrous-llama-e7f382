@@ -1094,6 +1094,7 @@ function renderCloudStatus(forcedText) {
 
 function renderAuthGate(message) {
   const isLogged = Boolean(state.currentUser);
+  document.body.classList.remove("auth-loading");
   els.authScreen.classList.toggle("is-hidden", isLogged);
   els.appShell.classList.toggle("is-hidden", !isLogged);
   els.sidebar.classList.toggle("is-hidden", !isLogged);

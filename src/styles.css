@@ -30,6 +30,12 @@ body {
   font-family: Inter, system-ui, sans-serif;
 }
 
+body.auth-loading #auth-screen,
+body.auth-loading #app-shell,
+body.auth-loading #sidebar {
+  display: none !important;
+}
+
 .is-hidden {
   display: none !important;
 }
