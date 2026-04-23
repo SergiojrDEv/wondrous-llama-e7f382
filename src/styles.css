@@ -532,6 +532,11 @@ select:focus {
   gap: 12px;
 }
 
+.form-actions {
+  display: grid;
+  gap: 10px;
+}
+
 .table-panel {
   min-width: 0;
 }
@@ -606,13 +611,32 @@ td {
   color: var(--text);
 }
 
+.row-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
 .row-action {
-  width: 32px;
+  min-width: 32px;
   height: 32px;
   border: 1px solid #fecdd3;
   border-radius: 8px;
   background: #fff1f2;
   color: #be123c;
+  font-weight: 800;
+  padding: 0 8px;
+}
+
+.row-action.neutral {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.row-action.success {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
 }
 
 .empty-state {

@@ -7,6 +7,9 @@ const SUPABASE_FALLBACK_CONFIG = {
 
 const defaultSettings = {
   accounts: ["Carteira", "Conta corrente", "Cartao de credito", "Corretora"],
+  creditCards: [
+    { id: "default-card", name: "Cartao principal", closingDay: 25, dueDay: 10 },
+  ],
   categories: {
   expense: [
     ["moradia", "Moradia", "#0b7285", 2200],
@@ -49,6 +52,7 @@ const state = {
   activeType: "expense",
   search: "",
   typeFilter: "all",
+  editingId: null,
   chart: null,
   supabaseClient: null,
   currentUser: null,
@@ -62,6 +66,7 @@ const els = {
   form: document.querySelector("#transaction-form"),
   category: document.querySelector("#category"),
   account: document.querySelector("#account"),
+  creditCard: document.querySelector("#credit-card"),
   date: document.querySelector("#date"),
   table: document.querySelector("#transaction-table"),
   search: document.querySelector("#search"),
@@ -163,6 +168,7 @@ function load() {
 function mergeSettings(saved = {}) {
   return {
     accounts: saved.accounts?.length ? saved.accounts : [...defaultSettings.accounts],
+    creditCards: saved.creditCards?.length ? saved.creditCards : clone(defaultSettings.creditCards),
     categories: {
       expense: saved.categories?.expense?.length ? saved.categories.expense : clone(defaultSettings.categories.expense),
       income: saved.categories?.income?.length ? saved.categories.income : clone(defaultSettings.categories.income),
@@ -200,6 +206,13 @@ function updateCategoryOptions() {
 
 function updateAccountOptions() {
   els.account.innerHTML = state.settings.accounts.map((name) => `<option>${esc(name)}</option>`).join("");
+}
+
+function updateCreditCardOptions() {
+  if (!els.creditCard) return;
+  els.creditCard.innerHTML = '<option value="">Nenhum</option>' + state.settings.creditCards
+    .map((card) => `<option value="${esc(card.id)}">${esc(card.name)}</option>`)
+    .join("");
 }
 
 function setActiveType(type) {
@@ -403,7 +416,13 @@ function renderTable() {
           <td>${item.dueDate ? parseLocalDate(item.dueDate).toLocaleDateString("pt-BR") : "-"}</td>
           <td><span class="type-pill ${item.type}">${typeLabel}</span></td>
           <td class="right money ${amountClass}">${sign} ${money(Number(item.amount))}</td>
-          <td class="right"><button class="row-action" type="button" data-remove="${item.id}" aria-label="Remover lancamento">×</button></td>
+          <td class="right">
+            <div class="row-actions">
+              ${item.status !== "paid" ? `<button class="row-action success" type="button" data-paid="${item.id}" title="Marcar como pago">Pago</button>` : ""}
+              <button class="row-action neutral" type="button" data-edit="${item.id}" title="Editar">Editar</button>
+              <button class="row-action" type="button" data-remove="${item.id}" aria-label="Remover lancamento">×</button>
+            </div>
+          </td>
         </tr>
       `;
     })
@@ -464,6 +483,7 @@ function renderGoals() {
 function renderSettings() {
   renderCategoryManager();
   renderAccountManager();
+  renderCardManager();
   renderGoalManager();
   renderGoalCategoryOptions();
 }
@@ -501,6 +521,21 @@ function renderAccountManager() {
           <small>Conta disponivel para lancamentos</small>
         </div>
         <button class="mini-btn danger" type="button" data-remove-account="${index}">Remover</button>
+      </div>
+    `)
+    .join("");
+}
+
+function renderCardManager() {
+  const target = document.querySelector("#card-manage-list");
+  target.innerHTML = state.settings.creditCards
+    .map((card, index) => `
+      <div class="manage-item">
+        <div>
+          <strong>${esc(card.name)}</strong>
+          <small>Fecha dia ${card.closingDay} | vence dia ${card.dueDay}</small>
+        </div>
+        <button class="mini-btn danger" type="button" data-remove-card="${index}">Remover</button>
       </div>
     `)
     .join("");
@@ -596,6 +631,10 @@ function renderAll() {
 function addTransaction(event) {
   event.preventDefault();
   const formData = new FormData(event.currentTarget);
+  if (state.editingId) {
+    updateTransaction(formData);
+    return;
+  }
   const installments = Math.max(1, Number(formData.get("installments") || 1));
   const repeatCount = Math.max(1, Number(formData.get("repeatCount") || 1));
   const recurrence = formData.get("recurrence");
@@ -618,6 +657,7 @@ function addTransaction(event) {
       dueDate,
       status: formData.get("status") || "paid",
       paymentMethod: formData.get("paymentMethod") || "pix",
+      creditCardId: formData.get("creditCardId") || null,
       recurrence: recurrence || "none",
       recurrenceId: recurrence === "monthly" ? groupId : null,
       installmentGroup: installments > 1 ? groupId : null,
@@ -634,6 +674,76 @@ function addTransaction(event) {
   updateCategoryOptions();
   renderAll();
   notify(totalItems > 1 ? `${totalItems} lancamentos criados.` : "Lancamento salvo.");
+}
+
+function updateTransaction(formData) {
+  const item = state.transactions.find((transaction) => transaction.id === state.editingId);
+  if (!item) return;
+  item.type = state.activeType;
+  item.description = formData.get("description").trim();
+  item.category = formData.get("category");
+  item.account = formData.get("account");
+  item.amount = Number(formData.get("amount"));
+  item.date = formData.get("date");
+  item.dueDate = formData.get("dueDate") || formData.get("date");
+  item.status = formData.get("status") || "paid";
+  item.paymentMethod = formData.get("paymentMethod") || "pix";
+  item.creditCardId = formData.get("creditCardId") || null;
+  persist();
+  resetTransactionForm();
+  renderAll();
+  notify("Lancamento atualizado.");
+}
+
+function editTransaction(id) {
+  const item = state.transactions.find((transaction) => transaction.id === id);
+  if (!item) return;
+  state.editingId = id;
+  setActiveType(item.type);
+  document.querySelector("#description").value = item.description;
+  document.querySelector("#category").value = item.category;
+  document.querySelector("#account").value = item.account;
+  document.querySelector("#amount").value = item.amount;
+  document.querySelector("#date").value = item.date;
+  document.querySelector("#due-date").value = item.dueDate || item.date;
+  document.querySelector("#status").value = item.status || "paid";
+  document.querySelector("#payment-method").value = item.paymentMethod || "pix";
+  document.querySelector("#credit-card").value = item.creditCardId || "";
+  document.querySelector("#installments").value = item.installmentTotal || 1;
+  document.querySelector("#recurrence").value = "none";
+  document.querySelector("#repeat-count").value = 1;
+  document.querySelector("#installments").disabled = true;
+  document.querySelector("#recurrence").disabled = true;
+  document.querySelector("#repeat-count").disabled = true;
+  document.querySelector("#transaction-form-title").textContent = "Editar lancamento";
+  document.querySelector("#transaction-submit").textContent = "Salvar alteracoes";
+  document.querySelector("#cancel-edit").classList.remove("is-hidden");
+  location.hash = "lancamentos";
+  setSectionFromHash();
+}
+
+function resetTransactionForm() {
+  state.editingId = null;
+  els.form.reset();
+  setDefaultDate();
+  updateCategoryOptions();
+  updateCreditCardOptions();
+  document.querySelector("#installments").disabled = false;
+  document.querySelector("#recurrence").disabled = false;
+  document.querySelector("#repeat-count").disabled = false;
+  document.querySelector("#transaction-form-title").textContent = "Novo lancamento";
+  document.querySelector("#transaction-submit").textContent = "Salvar lancamento";
+  document.querySelector("#cancel-edit").classList.add("is-hidden");
+}
+
+function markTransactionPaid(id) {
+  const item = state.transactions.find((transaction) => transaction.id === id);
+  if (!item) return;
+  item.status = "paid";
+  item.date = toDateInput(new Date());
+  persist();
+  renderAll();
+  notify("Lancamento marcado como pago.");
 }
 
 function removeTransaction(id) {
@@ -692,6 +802,27 @@ function addAccount(event) {
   notify("Conta criada.");
 }
 
+function addCreditCard(event) {
+  event.preventDefault();
+  const nameInput = document.querySelector("#new-card-name");
+  const name = nameInput.value.trim();
+  const closingDay = Number(document.querySelector("#new-card-closing").value);
+  const dueDay = Number(document.querySelector("#new-card-due").value);
+  if (!name) return notify("Informe o nome do cartao.");
+  if (closingDay < 1 || closingDay > 31 || dueDay < 1 || dueDay > 31) return notify("Informe dias validos.");
+  if (state.settings.creditCards.some((card) => card.name.toLowerCase() === name.toLowerCase())) {
+    return notify("Este cartao ja existe.");
+  }
+  state.settings.creditCards.push({ id: createId(), name, closingDay, dueDay });
+  event.currentTarget.reset();
+  document.querySelector("#new-card-closing").value = 25;
+  document.querySelector("#new-card-due").value = 10;
+  persist();
+  updateCreditCardOptions();
+  renderAll();
+  notify("Cartao criado.");
+}
+
 function addGoal(event) {
   event.preventDefault();
   const name = document.querySelector("#new-goal-name").value.trim();
@@ -731,6 +862,18 @@ function removeAccount(index) {
   updateAccountOptions();
   renderAll();
   notify("Conta removida.");
+}
+
+function removeCreditCard(index) {
+  const card = state.settings.creditCards[index];
+  if (!card) return;
+  const inUse = state.transactions.some((item) => item.creditCardId === card.id);
+  if (inUse) return notify("Cartao em uso. Altere os lancamentos primeiro.");
+  state.settings.creditCards.splice(index, 1);
+  persist();
+  updateCreditCardOptions();
+  renderAll();
+  notify("Cartao removido.");
 }
 
 function editExpenseLimit(key) {
@@ -1006,6 +1149,7 @@ function toRemoteTransaction(item) {
     status: item.status || "paid",
     due_date: item.dueDate || item.date,
     payment_method: item.paymentMethod || "pix",
+    credit_card_id: item.creditCardId || null,
     recurrence_id: item.recurrenceId || null,
     installment_group: item.installmentGroup || null,
     installment_number: item.installmentNumber || null,
@@ -1028,6 +1172,7 @@ function fromRemoteTransaction(row) {
     dueDate: normalizeRemoteDate(row.due_date || row.date, row.year, row.month),
     status: row.status || "paid",
     paymentMethod: row.payment_method || "pix",
+    creditCardId: row.credit_card_id || null,
     recurrenceId: row.recurrence_id || null,
     installmentGroup: row.installment_group || null,
     installmentNumber: row.installment_number || null,
@@ -1181,6 +1326,7 @@ function seedData() {
     dueDate: new Date(current.getFullYear(), current.getMonth(), day).toISOString().slice(0, 10),
     status: day > new Date().getDate() ? "pending" : "paid",
     paymentMethod: type === "income" ? "transfer" : "credit",
+    creditCardId: type === "expense" ? "default-card" : null,
     recurrence: "none",
     recurrenceId: null,
     installmentGroup: null,
@@ -1214,6 +1360,7 @@ function bindEvents() {
   els.form.addEventListener("submit", addTransaction);
   document.querySelector("#category-form").addEventListener("submit", addCategory);
   document.querySelector("#account-form").addEventListener("submit", addAccount);
+  document.querySelector("#card-form").addEventListener("submit", addCreditCard);
   document.querySelector("#goal-form").addEventListener("submit", addGoal);
   document.querySelector("#login-form").addEventListener("submit", signInSupabase);
   document.querySelector("#login-create").addEventListener("click", () => showAuthView("signup"));
@@ -1229,6 +1376,7 @@ function bindEvents() {
     event.target.value = formatPhone(event.target.value);
   });
   document.querySelector("#logout-btn").addEventListener("click", signOutSupabase);
+  document.querySelector("#cancel-edit").addEventListener("click", resetTransactionForm);
   els.search.addEventListener("input", (event) => {
     state.search = event.target.value;
     renderTable();
@@ -1238,8 +1386,12 @@ function bindEvents() {
     renderTable();
   });
   els.table.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-remove]");
-    if (button) removeTransaction(button.dataset.remove);
+    const removeButton = event.target.closest("[data-remove]");
+    const editButton = event.target.closest("[data-edit]");
+    const paidButton = event.target.closest("[data-paid]");
+    if (removeButton) removeTransaction(removeButton.dataset.remove);
+    if (editButton) editTransaction(editButton.dataset.edit);
+    if (paidButton) markTransactionPaid(paidButton.dataset.paid);
   });
   document.querySelector("#export-csv").addEventListener("click", exportCsv);
   document.querySelector("#export-json").addEventListener("click", exportJson);
@@ -1287,6 +1439,10 @@ function bindEvents() {
     const button = event.target.closest("[data-remove-account]");
     if (button) removeAccount(Number(button.dataset.removeAccount));
   });
+  document.querySelector("#card-manage-list").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-remove-card]");
+    if (button) removeCreditCard(Number(button.dataset.removeCard));
+  });
   document.querySelector("#goal-manage-list").addEventListener("click", (event) => {
     const button = event.target.closest("[data-remove-goal]");
     if (!button) return;
@@ -1313,6 +1469,7 @@ async function init() {
   setDefaultDate();
   setActiveType("expense");
   updateAccountOptions();
+  updateCreditCardOptions();
   bindEvents();
   setSectionFromHash();
   renderAll();

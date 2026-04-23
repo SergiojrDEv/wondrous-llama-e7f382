@@ -206,7 +206,7 @@
           <div class="panel-header">
             <div>
               <p class="eyebrow">Cadastro</p>
-              <h2>Novo lancamento</h2>
+              <h2 id="transaction-form-title">Novo lancamento</h2>
             </div>
           </div>
 
@@ -270,12 +270,16 @@
               </select>
             </label>
             <label>
-              Parcelas
-              <input id="installments" name="installments" type="number" min="1" max="48" value="1">
+              Cartao
+              <select id="credit-card" name="creditCardId"></select>
             </label>
           </div>
 
           <div class="field-row">
+            <label>
+              Parcelas
+              <input id="installments" name="installments" type="number" min="1" max="48" value="1">
+            </label>
             <label>
               Recorrencia
               <select id="recurrence" name="recurrence">
@@ -283,13 +287,17 @@
                 <option value="monthly">Mensal</option>
               </select>
             </label>
-            <label>
-              Repetir por
-              <input id="repeat-count" name="repeatCount" type="number" min="1" max="60" value="1">
-            </label>
           </div>
 
-          <button class="primary-btn full" type="submit">Salvar lancamento</button>
+          <label>
+            Repetir por
+            <input id="repeat-count" name="repeatCount" type="number" min="1" max="60" value="1">
+          </label>
+
+          <div class="form-actions">
+            <button class="primary-btn full" id="transaction-submit" type="submit">Salvar lancamento</button>
+            <button class="ghost-btn full is-hidden" id="cancel-edit" type="button">Cancelar edicao</button>
+          </div>
         </form>
 
         <article class="panel table-panel">
@@ -417,6 +425,30 @@
           <button class="primary-btn full" type="submit">Adicionar conta</button>
         </form>
 
+        <form class="panel settings-panel" id="card-form">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Cartoes</p>
+              <h2>Criar novo cartao</h2>
+            </div>
+          </div>
+          <label>
+            Nome do cartao
+            <input id="new-card-name" type="text" placeholder="Ex: Nubank Gold" required>
+          </label>
+          <div class="field-row">
+            <label>
+              Fechamento
+              <input id="new-card-closing" type="number" min="1" max="31" value="25" required>
+            </label>
+            <label>
+              Vencimento
+              <input id="new-card-due" type="number" min="1" max="31" value="10" required>
+            </label>
+          </div>
+          <button class="primary-btn full" type="submit">Adicionar cartao</button>
+        </form>
+
         <form class="panel settings-panel" id="goal-form">
           <div class="panel-header">
             <div>
@@ -460,6 +492,15 @@
             </div>
           </div>
           <div class="manage-list" id="account-manage-list"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Gerenciar</p>
+              <h2>Cartoes</h2>
+            </div>
+          </div>
+          <div class="manage-list" id="card-manage-list"></div>
         </article>
         <article class="panel">
           <div class="panel-header">

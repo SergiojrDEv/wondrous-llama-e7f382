@@ -15,6 +15,7 @@ create table if not exists public.transactions (
   status text default 'paid',
   due_date text,
   payment_method text default 'pix',
+  credit_card_id text,
   recurrence_id uuid,
   installment_group uuid,
   installment_number int,
@@ -36,6 +37,9 @@ alter table public.transactions
 
 alter table public.transactions
   add column if not exists payment_method text default 'pix';
+
+alter table public.transactions
+  add column if not exists credit_card_id text;
 
 alter table public.transactions
   add column if not exists recurrence_id uuid;

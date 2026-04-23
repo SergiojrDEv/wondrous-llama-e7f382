@@ -38,7 +38,8 @@ O app ja tem fallback para o projeto Supabase `gxwukctgfrquureyerli` usando a pu
 - Cadastro com nome completo, CPF, telefone, data de nascimento, e-mail e senha.
 - Lancamentos com categoria, conta, valor e data.
 - Status pago, pendente ou previsto.
-- Vencimentos, forma de pagamento, parcelas e recorrencia mensal.
+- Edicao de lancamentos e acao rapida para marcar como pago.
+- Vencimentos, forma de pagamento, cartoes, parcelas e recorrencia mensal.
 - Painel inteligente com gasto diario seguro, comparativo e alertas.
 - Criacao e remocao de categorias, contas e metas pela aba Ajustes.
 - Limites mensais editaveis para categorias de despesa.
