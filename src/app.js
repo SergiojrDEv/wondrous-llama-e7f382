@@ -521,11 +521,12 @@ function renderGoals() {
   }
 
   target.innerHTML = state.settings.goals
-    .map((goal) => {
+    .map((goal, index) => {
       const current = investments
         .filter((item) => item.category === goal.key)
         .reduce((sum, item) => sum + Number(item.amount), 0);
       const pct = Math.min((current / goal.target) * 100, 100);
+      const category = getCategory("investment", goal.key);
       return `
         <article class="goal-card">
           <header>
@@ -534,10 +535,56 @@ function renderGoals() {
           </header>
           <div class="bar"><span style="--value:${pct}%;--color:var(--invest)"></span></div>
           <p><span class="money purple">${money(current)}</span> de ${money(goal.target)}</p>
+          <small class="goal-card-note">Categoria: ${esc(category[1])}</small>
+          <div class="goal-card-actions">
+            <button class="mini-btn" type="button" data-goal-contribute="${index}">Lancar aporte</button>
+            <button class="mini-btn" type="button" data-goal-edit-card="${index}">Editar meta</button>
+          </div>
         </article>
       `;
     })
     .join("");
+}
+
+function openGoalContribution(index) {
+  const goal = state.settings.goals[index];
+  if (!goal) return;
+  location.hash = "lancamentos";
+  setSectionFromHash();
+  setActiveType("investment");
+  updateCategoryOptions();
+  document.querySelector("#category").value = goal.key;
+  document.querySelector("#account").value = state.settings.accounts.includes("Corretora") ? "Corretora" : state.settings.accounts[0];
+  document.querySelector("#payment-method").value = "transfer";
+  updateCreditPaymentFields();
+  document.querySelector("#description").value = `Aporte - ${goal.name}`;
+  document.querySelector("#amount").value = "";
+  document.querySelector("#description").focus();
+  document.querySelector("#transaction-form").scrollIntoView({ behavior: "smooth", block: "start" });
+  notify(`Preencha o valor para lancar aporte em ${goal.name}.`);
+}
+
+function editGoalFromCard(index) {
+  const goal = state.settings.goals[index];
+  if (!goal) return;
+
+  const nextName = window.prompt("Nome da meta", goal.name);
+  if (nextName === null) return;
+
+  const nextTargetRaw = window.prompt("Valor alvo da meta", String(goal.target));
+  if (nextTargetRaw === null) return;
+
+  const nextTarget = Math.max(0, Number(String(nextTargetRaw).replace(",", ".")) || 0);
+  if (!nextName.trim() || !nextTarget) {
+    notify("Informe um nome e um valor alvo valido.");
+    return;
+  }
+
+  goal.name = nextName.trim();
+  goal.target = nextTarget;
+  persist();
+  renderAll();
+  notify("Meta atualizada.");
 }
 
 function renderSettings() {
@@ -1863,6 +1910,17 @@ function bindEvents() {
       persist();
       renderAll();
       notify("Meta removida.");
+    }
+  });
+  document.querySelector("#goals-list").addEventListener("click", (event) => {
+    const contributeButton = event.target.closest("[data-goal-contribute]");
+    const editButton = event.target.closest("[data-goal-edit-card]");
+    if (contributeButton) {
+      openGoalContribution(Number(contributeButton.dataset.goalContribute));
+      return;
+    }
+    if (editButton) {
+      editGoalFromCard(Number(editButton.dataset.goalEditCard));
     }
   });
   window.addEventListener("hashchange", setSectionFromHash);

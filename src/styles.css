@@ -781,6 +781,26 @@ td {
   font-weight: 700;
 }
 
+.goal-card {
+  display: grid;
+  gap: 12px;
+}
+
+.goal-card p {
+  margin: 0;
+}
+
+.goal-card-note {
+  display: block;
+  margin-top: -4px;
+}
+
+.goal-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .report-panel {
   max-width: 760px;
 }
