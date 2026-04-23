@@ -1612,4 +1612,9 @@ async function init() {
   await initSupabase();
 }
 
-init();
+init().catch((error) => {
+  console.error(error);
+  state.currentUser = null;
+  state.cloudReady = false;
+  renderAuthGate("Nao foi possivel carregar agora. Atualize a pagina.");
+});
