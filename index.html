@@ -601,6 +601,90 @@
     </div>
   </div>
 
+  <div class="modal-overlay is-hidden" id="transaction-modal-overlay">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="transaction-modal-title">
+      <form id="transaction-modal-form">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Lancamentos</p>
+            <h2 id="transaction-modal-title">Editar lancamento</h2>
+          </div>
+          <button class="icon-btn" id="transaction-modal-close" type="button" aria-label="Fechar">×</button>
+        </div>
+
+        <div class="segmented-control" id="transaction-modal-types" role="tablist" aria-label="Tipo de lancamento">
+          <button class="segment transaction-modal-segment active" type="button" data-modal-type="expense">Despesa</button>
+          <button class="segment transaction-modal-segment" type="button" data-modal-type="income">Receita</button>
+          <button class="segment transaction-modal-segment" type="button" data-modal-type="investment">Investimento</button>
+        </div>
+
+        <label>
+          Descricao
+          <input id="transaction-modal-description" name="description" type="text" required>
+        </label>
+
+        <div class="field-row">
+          <label>
+            Categoria
+            <select id="transaction-modal-category" name="category" required></select>
+          </label>
+          <label>
+            Conta
+            <select id="transaction-modal-account" name="account" required></select>
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label>
+            Valor
+            <input id="transaction-modal-amount" name="amount" type="number" min="0.01" step="0.01" required>
+          </label>
+          <label>
+            Data
+            <input id="transaction-modal-date" name="date" type="date" required>
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label>
+            Status
+            <select id="transaction-modal-status" name="status" required>
+              <option value="paid">Pago</option>
+              <option value="pending">Pendente</option>
+              <option value="planned">Previsto</option>
+            </select>
+          </label>
+          <label>
+            Vencimento
+            <input id="transaction-modal-due-date" name="dueDate" type="date">
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label>
+            Pagamento
+            <select id="transaction-modal-payment-method" name="paymentMethod" required>
+              <option value="pix">Pix</option>
+              <option value="debit">Debito</option>
+              <option value="credit">Credito</option>
+              <option value="cash">Dinheiro</option>
+              <option value="transfer">Transferencia</option>
+            </select>
+          </label>
+          <label id="transaction-modal-credit-card-field" class="is-hidden" hidden>
+            Cartao
+            <select id="transaction-modal-credit-card" name="creditCardId"></select>
+          </label>
+        </div>
+
+        <div class="modal-actions">
+          <button class="ghost-btn" id="transaction-modal-cancel" type="button">Cancelar</button>
+          <button class="primary-btn" type="submit">Salvar alteracoes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

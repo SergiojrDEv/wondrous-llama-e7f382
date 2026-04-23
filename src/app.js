@@ -64,6 +64,8 @@ const state = {
   authView: "login",
   isPasswordRecovery: false,
   activeGoalEditIndex: null,
+  activeTransactionEditId: null,
+  transactionModalType: "expense",
 };
 
 const els = {
@@ -229,6 +231,13 @@ function updateCreditCardOptions() {
   els.creditCard.innerHTML = '<option value="">Nenhum</option>' + state.settings.creditCards
     .map((card) => `<option value="${esc(card.id)}">${esc(card.name)}</option>`)
     .join("");
+
+  const modalCard = document.querySelector("#transaction-modal-credit-card");
+  if (modalCard) {
+    modalCard.innerHTML = '<option value="">Nenhum</option>' + state.settings.creditCards
+      .map((card) => `<option value="${esc(card.id)}">${esc(card.name)}</option>`)
+      .join("");
+  }
 }
 
 function updateCreditPaymentFields() {
@@ -243,6 +252,39 @@ function updateCreditPaymentFields() {
     document.querySelector("#credit-card").value = "";
     document.querySelector("#installments").value = 1;
   }
+}
+
+function updateTransactionModalCategories(type = state.transactionModalType) {
+  const category = document.querySelector("#transaction-modal-category");
+  if (!category) return;
+  category.innerHTML = state.settings.categories[type]
+    .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`)
+    .join("");
+}
+
+function updateTransactionModalAccounts() {
+  const account = document.querySelector("#transaction-modal-account");
+  if (!account) return;
+  account.innerHTML = state.settings.accounts.map((name) => `<option>${esc(name)}</option>`).join("");
+}
+
+function updateTransactionModalCreditFields() {
+  const isCredit = document.querySelector("#transaction-modal-payment-method")?.value === "credit";
+  const cardField = document.querySelector("#transaction-modal-credit-card-field");
+  if (!cardField) return;
+  cardField.classList.toggle("is-hidden", !isCredit);
+  cardField.hidden = !isCredit;
+  if (!isCredit) {
+    document.querySelector("#transaction-modal-credit-card").value = "";
+  }
+}
+
+function setTransactionModalType(type) {
+  state.transactionModalType = type;
+  document.querySelectorAll(".transaction-modal-segment").forEach((button) => {
+    button.classList.toggle("active", button.dataset.modalType === type);
+  });
+  updateTransactionModalCategories(type);
 }
 
 function setActiveType(type) {
@@ -650,6 +692,8 @@ function renderSettings() {
   renderCardManager();
   renderGoalManager();
   renderGoalCategoryOptions();
+  updateTransactionModalAccounts();
+  updateCreditCardOptions();
 }
 
 function renderCategoryManager() {
@@ -900,29 +944,23 @@ function updateTransaction(formData) {
 function editTransaction(id) {
   const item = state.transactions.find((transaction) => transaction.id === id);
   if (!item) return;
-  state.editingId = id;
-  setActiveType(item.type);
-  document.querySelector("#description").value = item.description;
-  document.querySelector("#category").value = item.category;
-  document.querySelector("#account").value = item.account;
-  document.querySelector("#amount").value = item.amount;
-  document.querySelector("#date").value = item.date;
-  document.querySelector("#due-date").value = item.dueDate || item.date;
-  document.querySelector("#status").value = item.status || "paid";
-  document.querySelector("#payment-method").value = item.paymentMethod || "pix";
-  updateCreditPaymentFields();
-  document.querySelector("#credit-card").value = item.creditCardId || "";
-  document.querySelector("#installments").value = item.installmentTotal || 1;
-  document.querySelector("#recurrence").value = "none";
-  document.querySelector("#repeat-count").value = 1;
-  document.querySelector("#installments").disabled = true;
-  document.querySelector("#recurrence").disabled = true;
-  document.querySelector("#repeat-count").disabled = true;
-  document.querySelector("#transaction-form-title").textContent = "Editar lancamento";
-  document.querySelector("#transaction-submit").textContent = "Salvar alteracoes";
-  document.querySelector("#cancel-edit").classList.remove("is-hidden");
-  location.hash = "lancamentos";
-  setSectionFromHash();
+  state.activeTransactionEditId = id;
+  setTransactionModalType(item.type);
+  updateTransactionModalAccounts();
+  updateCreditCardOptions();
+  document.querySelector("#transaction-modal-description").value = item.description;
+  document.querySelector("#transaction-modal-category").value = item.category;
+  document.querySelector("#transaction-modal-account").value = item.account;
+  document.querySelector("#transaction-modal-amount").value = item.amount;
+  document.querySelector("#transaction-modal-date").value = item.date;
+  document.querySelector("#transaction-modal-due-date").value = item.dueDate || item.date;
+  document.querySelector("#transaction-modal-status").value = item.status || "paid";
+  document.querySelector("#transaction-modal-payment-method").value = item.paymentMethod || "pix";
+  updateTransactionModalCreditFields();
+  document.querySelector("#transaction-modal-credit-card").value = item.creditCardId || "";
+  document.querySelector("#transaction-modal-overlay").classList.remove("is-hidden");
+  document.body.classList.add("modal-open");
+  document.querySelector("#transaction-modal-description").focus();
 }
 
 function resetTransactionForm() {
@@ -938,6 +976,44 @@ function resetTransactionForm() {
   document.querySelector("#transaction-submit").textContent = "Salvar lancamento";
   document.querySelector("#cancel-edit").classList.add("is-hidden");
   updateCreditPaymentFields();
+}
+
+function closeTransactionModal() {
+  state.activeTransactionEditId = null;
+  document.querySelector("#transaction-modal-form").reset();
+  document.querySelector("#transaction-modal-overlay").classList.add("is-hidden");
+  document.body.classList.remove("modal-open");
+}
+
+function saveTransactionFromModal(event) {
+  event.preventDefault();
+  const item = state.transactions.find((transaction) => transaction.id === state.activeTransactionEditId);
+  if (!item) return closeTransactionModal();
+
+  item.type = state.transactionModalType;
+  item.description = document.querySelector("#transaction-modal-description").value.trim();
+  item.category = document.querySelector("#transaction-modal-category").value;
+  item.account = document.querySelector("#transaction-modal-account").value;
+  item.amount = Number(document.querySelector("#transaction-modal-amount").value);
+  item.date = document.querySelector("#transaction-modal-date").value;
+  item.dueDate = document.querySelector("#transaction-modal-due-date").value || item.date;
+  item.status = document.querySelector("#transaction-modal-status").value || "paid";
+  item.paymentMethod = document.querySelector("#transaction-modal-payment-method").value || "pix";
+  item.creditCardId = item.paymentMethod === "credit" ? document.querySelector("#transaction-modal-credit-card").value || null : null;
+  if (item.paymentMethod !== "credit") {
+    item.installmentGroup = null;
+    item.installmentNumber = null;
+    item.installmentTotal = null;
+  }
+
+  if (!item.description || !item.category || !item.account || !item.amount || !item.date) {
+    return notify("Preencha os dados do lancamento corretamente.");
+  }
+
+  persist();
+  renderAll();
+  closeTransactionModal();
+  notify("Lancamento atualizado.");
 }
 
 function markTransactionPaid(id) {
@@ -1894,6 +1970,16 @@ function bindEvents() {
   document.querySelector("#goal-modal-overlay").addEventListener("click", (event) => {
     if (event.target.id === "goal-modal-overlay") closeGoalModal();
   });
+  document.querySelector("#transaction-modal-form").addEventListener("submit", saveTransactionFromModal);
+  document.querySelector("#transaction-modal-close").addEventListener("click", closeTransactionModal);
+  document.querySelector("#transaction-modal-cancel").addEventListener("click", closeTransactionModal);
+  document.querySelector("#transaction-modal-overlay").addEventListener("click", (event) => {
+    if (event.target.id === "transaction-modal-overlay") closeTransactionModal();
+  });
+  document.querySelectorAll(".transaction-modal-segment").forEach((button) => {
+    button.addEventListener("click", () => setTransactionModalType(button.dataset.modalType));
+  });
+  document.querySelector("#transaction-modal-payment-method").addEventListener("change", updateTransactionModalCreditFields);
   document.querySelector("#signup-cpf").addEventListener("input", (event) => {
     event.target.value = formatCpf(event.target.value);
   });

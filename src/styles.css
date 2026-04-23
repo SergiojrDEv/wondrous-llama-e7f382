@@ -866,6 +866,10 @@ td {
   gap: 10px;
 }
 
+.modal-card .segmented-control {
+  margin-bottom: 4px;
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;
