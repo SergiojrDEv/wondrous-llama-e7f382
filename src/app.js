@@ -72,6 +72,7 @@ const state = {
   settings: clone(defaultSettings),
   currentDate: new Date(),
   manageView: "categories",
+  settingsItemEdit: null,
   activeType: "expense",
   search: "",
   typeFilter: "all",
@@ -977,7 +978,7 @@ function renderCategoryManager() {
           <small>${labels[item.type]}${item.type === "expense" ? ` | limite ${money(Number(item.limit || 0))}` : ""}${getSubcategories(item.type, item.key).length ? ` | ${getSubcategories(item.type, item.key).length} subcategoria${getSubcategories(item.type, item.key).length === 1 ? "" : "s"}` : ""}</small>
         </div>
         <div class="mini-actions">
-          ${item.type === "expense" ? `<button class="mini-btn" type="button" data-edit-limit="${item.key}">Limite</button>` : ""}
+          <button class="mini-btn" type="button" data-edit-category="${item.type}:${item.key}">Editar</button>
           <button class="mini-btn danger" type="button" data-remove-category="${item.type}:${item.key}">Remover</button>
         </div>
       </div>
@@ -994,7 +995,10 @@ function renderAccountManager() {
           <strong>${esc(name)}</strong>
           <small>Conta disponivel para lancamentos</small>
         </div>
-        <button class="mini-btn danger" type="button" data-remove-account="${index}">Remover</button>
+        <div class="mini-actions">
+          <button class="mini-btn" type="button" data-edit-account="${index}">Editar</button>
+          <button class="mini-btn danger" type="button" data-remove-account="${index}">Remover</button>
+        </div>
       </div>
     `)
     .join("");
@@ -1009,7 +1013,10 @@ function renderCardManager() {
           <strong>${esc(card.name)}</strong>
           <small>Fecha dia ${card.closingDay} | vence dia ${card.dueDay}</small>
         </div>
-        <button class="mini-btn danger" type="button" data-remove-card="${index}">Remover</button>
+        <div class="mini-actions">
+          <button class="mini-btn" type="button" data-edit-card="${index}">Editar</button>
+          <button class="mini-btn danger" type="button" data-remove-card="${index}">Remover</button>
+        </div>
       </div>
     `)
     .join("");
@@ -1105,15 +1112,23 @@ function renderSubcategoryManager() {
       </header>
       <div class="tag-chip-wrap">
         ${group.tags.length ? group.tags.map(([subKey, subLabel]) => `
-          <button
-            class="tag-chip"
-            type="button"
-            data-remove-subcategory="${group.type}:${group.categoryKey}:${subKey}"
-            title="Remover etiqueta"
-          >
+          <div class="tag-chip">
             <span>${esc(subLabel)}</span>
-            <span class="tag-chip-close">x</span>
-          </button>
+            <span class="tag-chip-actions">
+              <button
+                class="tag-chip-action"
+                type="button"
+                data-edit-subcategory="${group.type}:${group.categoryKey}:${subKey}"
+                title="Editar etiqueta"
+              >Editar</button>
+              <button
+                class="tag-chip-action danger"
+                type="button"
+                data-remove-subcategory="${group.type}:${group.categoryKey}:${subKey}"
+                title="Remover etiqueta"
+              >x</button>
+            </span>
+          </div>
         `).join("") : '<span class="tag-chip tag-chip-empty">Nenhuma etiqueta ainda</span>'}
       </div>
       <form class="tag-inline-form" data-subcategory-inline="${group.type}:${group.categoryKey}">
@@ -1143,6 +1158,84 @@ function addInlineSubcategory(type, categoryKey, name) {
   persist();
   renderAll();
   notify("Etiqueta adicionada.");
+}
+
+function openSettingsItemModal(config) {
+  state.settingsItemEdit = config;
+  document.querySelector("#settings-item-modal-kicker").textContent = config.kicker;
+  document.querySelector("#settings-item-modal-title").textContent = config.title;
+  document.querySelector("#settings-item-modal-name").value = config.name || "";
+  document.querySelector("#settings-item-modal-color").value = config.color || "#0b7285";
+  document.querySelector("#settings-item-modal-limit").value = Number(config.limit || 0);
+  document.querySelector("#settings-item-modal-closing").value = Number(config.closingDay || 25);
+  document.querySelector("#settings-item-modal-due").value = Number(config.dueDay || 10);
+  document.querySelector("#settings-item-modal-category-fields").classList.toggle("is-hidden", config.kind !== "category");
+  document.querySelector("#settings-item-modal-category-fields").hidden = config.kind !== "category";
+  document.querySelector("#settings-item-modal-card-fields").classList.toggle("is-hidden", config.kind !== "card");
+  document.querySelector("#settings-item-modal-card-fields").hidden = config.kind !== "card";
+  document.querySelector("#settings-item-modal-overlay").classList.remove("is-hidden");
+  document.body.classList.add("modal-open");
+  document.querySelector("#settings-item-modal-name").focus();
+}
+
+function closeSettingsItemModal() {
+  state.settingsItemEdit = null;
+  document.querySelector("#settings-item-modal-overlay").classList.add("is-hidden");
+  document.body.classList.remove("modal-open");
+}
+
+function saveSettingsItemFromModal(event) {
+  event.preventDefault();
+  const edit = state.settingsItemEdit;
+  if (!edit) return closeSettingsItemModal();
+
+  const name = document.querySelector("#settings-item-modal-name").value.trim();
+  if (!name) return notify("Informe um nome valido.");
+
+  if (edit.kind === "category") {
+    const item = state.settings.categories[edit.type].find(([key]) => key === edit.key);
+    if (!item) return closeSettingsItemModal();
+    item[1] = name;
+    item[2] = document.querySelector("#settings-item-modal-color").value;
+    const monthly = Math.max(0, Number(document.querySelector("#settings-item-modal-limit").value) || 0);
+    item[3] = monthly;
+    state.settings.budgetRules[edit.key] = {
+      weekly: getBudgetRule(edit.key).weekly || (monthly ? monthly / 4 : 0),
+      monthly,
+    };
+  }
+
+  if (edit.kind === "account") {
+    const duplicate = state.settings.accounts.some((item, index) => index !== edit.index && item.toLowerCase() === name.toLowerCase());
+    if (duplicate) return notify("Ja existe uma conta com este nome.");
+    const previous = state.settings.accounts[edit.index];
+    state.settings.accounts[edit.index] = name;
+    state.transactions.forEach((item) => {
+      if (item.account === previous) item.account = name;
+    });
+  }
+
+  if (edit.kind === "card") {
+    const duplicate = state.settings.creditCards.some((item, index) => index !== edit.index && item.name.toLowerCase() === name.toLowerCase());
+    if (duplicate) return notify("Ja existe um cartao com este nome.");
+    const card = state.settings.creditCards[edit.index];
+    if (!card) return closeSettingsItemModal();
+    card.name = name;
+    card.closingDay = Math.max(1, Math.min(31, Number(document.querySelector("#settings-item-modal-closing").value) || 25));
+    card.dueDay = Math.max(1, Math.min(31, Number(document.querySelector("#settings-item-modal-due").value) || 10));
+  }
+
+  if (edit.kind === "tag") {
+    const list = state.settings.subcategories?.[edit.type]?.[edit.categoryKey];
+    const item = list?.find(([key]) => key === edit.subKey);
+    if (!item) return closeSettingsItemModal();
+    item[1] = name;
+  }
+
+  persist();
+  renderAll();
+  closeSettingsItemModal();
+  notify("Alteracoes salvas.");
 }
 
 function renderChart() {
@@ -2392,6 +2485,12 @@ function bindEvents() {
   document.querySelector("#goal-modal-overlay").addEventListener("click", (event) => {
     if (event.target.id === "goal-modal-overlay") closeGoalModal();
   });
+  document.querySelector("#settings-item-modal-form").addEventListener("submit", saveSettingsItemFromModal);
+  document.querySelector("#settings-item-modal-close").addEventListener("click", closeSettingsItemModal);
+  document.querySelector("#settings-item-modal-cancel").addEventListener("click", closeSettingsItemModal);
+  document.querySelector("#settings-item-modal-overlay").addEventListener("click", (event) => {
+    if (event.target.id === "settings-item-modal-overlay") closeSettingsItemModal();
+  });
   document.querySelector("#transaction-modal-form").addEventListener("submit", saveTransactionFromModal);
   document.querySelector("#transaction-modal-close").addEventListener("click", closeTransactionModal);
   document.querySelector("#transaction-modal-cancel").addEventListener("click", closeTransactionModal);
@@ -2469,20 +2568,60 @@ function bindEvents() {
   });
   document.querySelector("#category-manage-list").addEventListener("click", (event) => {
     const removeButton = event.target.closest("[data-remove-category]");
-    const limitButton = event.target.closest("[data-edit-limit]");
+    const editButton = event.target.closest("[data-edit-category]");
     if (removeButton) {
       const [type, key] = removeButton.dataset.removeCategory.split(":");
       removeCategory(type, key);
     }
-    if (limitButton) editExpenseLimit(limitButton.dataset.editLimit);
+    if (editButton) {
+      const [type, key] = editButton.dataset.editCategory.split(":");
+      const item = state.settings.categories[type].find(([itemKey]) => itemKey === key);
+      if (!item) return;
+      openSettingsItemModal({
+        kind: "category",
+        kicker: "Categorias",
+        title: "Editar categoria",
+        type,
+        key,
+        name: item[1],
+        color: item[2],
+        limit: getBudgetRule(key).monthly || item[3] || 0,
+      });
+    }
   });
   document.querySelector("#account-manage-list").addEventListener("click", (event) => {
-    const button = event.target.closest("[data-remove-account]");
-    if (button) removeAccount(Number(button.dataset.removeAccount));
+    const removeButton = event.target.closest("[data-remove-account]");
+    const editButton = event.target.closest("[data-edit-account]");
+    if (removeButton) removeAccount(Number(removeButton.dataset.removeAccount));
+    if (editButton) {
+      const index = Number(editButton.dataset.editAccount);
+      openSettingsItemModal({
+        kind: "account",
+        kicker: "Contas",
+        title: "Editar conta",
+        index,
+        name: state.settings.accounts[index] || "",
+      });
+    }
   });
   document.querySelector("#card-manage-list").addEventListener("click", (event) => {
-    const button = event.target.closest("[data-remove-card]");
-    if (button) removeCreditCard(Number(button.dataset.removeCard));
+    const removeButton = event.target.closest("[data-remove-card]");
+    const editButton = event.target.closest("[data-edit-card]");
+    if (removeButton) removeCreditCard(Number(removeButton.dataset.removeCard));
+    if (editButton) {
+      const index = Number(editButton.dataset.editCard);
+      const card = state.settings.creditCards[index];
+      if (!card) return;
+      openSettingsItemModal({
+        kind: "card",
+        kicker: "Cartoes",
+        title: "Editar cartao",
+        index,
+        name: card.name,
+        closingDay: card.closingDay,
+        dueDay: card.dueDay,
+      });
+    }
   });
   document.querySelector("#goal-manage-list").addEventListener("click", (event) => {
     const saveButton = event.target.closest("[data-save-goal]");
@@ -2499,10 +2638,26 @@ function bindEvents() {
     }
   });
   document.querySelector("#subcategory-manage-list").addEventListener("click", (event) => {
-    const button = event.target.closest("[data-remove-subcategory]");
-    if (!button) return;
-    const [type, categoryKey, subKey] = button.dataset.removeSubcategory.split(":");
-    removeSubcategory(type, categoryKey, subKey);
+    const removeButton = event.target.closest("[data-remove-subcategory]");
+    const editButton = event.target.closest("[data-edit-subcategory]");
+    if (removeButton) {
+      const [type, categoryKey, subKey] = removeButton.dataset.removeSubcategory.split(":");
+      removeSubcategory(type, categoryKey, subKey);
+    }
+    if (editButton) {
+      const [type, categoryKey, subKey] = editButton.dataset.editSubcategory.split(":");
+      const item = getSubcategories(type, categoryKey).find(([key]) => key === subKey);
+      if (!item) return;
+      openSettingsItemModal({
+        kind: "tag",
+        kicker: "Etiquetas",
+        title: "Editar etiqueta",
+        type,
+        categoryKey,
+        subKey,
+        name: item[1],
+      });
+    }
   });
   document.querySelector("#subcategory-manage-list").addEventListener("submit", (event) => {
     const form = event.target.closest("[data-subcategory-inline]");

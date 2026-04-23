@@ -651,6 +651,52 @@
     </section>
   </main>
 
+  <div class="modal-overlay is-hidden" id="settings-item-modal-overlay">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="settings-item-modal-title">
+      <form id="settings-item-modal-form">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow" id="settings-item-modal-kicker">Gerenciar</p>
+            <h2 id="settings-item-modal-title">Editar item</h2>
+          </div>
+          <button class="icon-btn" id="settings-item-modal-close" type="button" aria-label="Fechar">X</button>
+        </div>
+
+        <label>
+          Nome
+          <input id="settings-item-modal-name" type="text" required>
+        </label>
+
+        <div class="field-row" id="settings-item-modal-category-fields">
+          <label>
+            Cor
+            <input id="settings-item-modal-color" type="color" value="#0b7285">
+          </label>
+          <label>
+            Limite mensal
+            <input id="settings-item-modal-limit" type="number" min="0" step="0.01" value="0">
+          </label>
+        </div>
+
+        <div class="field-row" id="settings-item-modal-card-fields">
+          <label>
+            Fechamento
+            <input id="settings-item-modal-closing" type="number" min="1" max="31" value="25">
+          </label>
+          <label>
+            Vencimento
+            <input id="settings-item-modal-due" type="number" min="1" max="31" value="10">
+          </label>
+        </div>
+
+        <div class="modal-actions">
+          <button class="ghost-btn" id="settings-item-modal-cancel" type="button">Cancelar</button>
+          <button class="primary-btn" type="submit">Salvar alteracoes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div class="modal-overlay is-hidden" id="goal-modal-overlay">
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="goal-modal-title">
       <form id="goal-modal-form">
