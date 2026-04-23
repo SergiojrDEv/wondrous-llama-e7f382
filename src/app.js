@@ -62,6 +62,7 @@ const state = {
   supabaseInitPromise: null,
   pendingImport: null,
   authView: "login",
+  isPasswordRecovery: false,
 };
 
 const els = {
@@ -1124,7 +1125,8 @@ async function initSupabase() {
   state.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
   state.cloudReady = true;
 
-  if (location.hash.includes("type=recovery") || location.hash.includes("access_token=")) {
+  state.isPasswordRecovery = location.hash.includes("type=recovery") || location.hash.includes("access_token=");
+  if (state.isPasswordRecovery) {
     showAuthView("update-password");
     renderAuthGate("Defina sua nova senha para continuar.");
   }
@@ -1137,6 +1139,12 @@ async function initSupabase() {
     renderCloudStatus();
   } else {
     state.currentUser = data.session?.user || null;
+    if (state.isPasswordRecovery) {
+      state.currentUser = null;
+      renderAuthGate("Defina sua nova senha para continuar.");
+      renderCloudStatus();
+      return true;
+    }
     renderAuthGate();
     renderCloudStatus();
     if (state.currentUser) {
@@ -1147,10 +1155,25 @@ async function initSupabase() {
 
   state.supabaseClient.auth.onAuthStateChange(async (event, session) => {
     if (event === "INITIAL_SESSION") return;
+    if (event === "PASSWORD_RECOVERY") {
+      state.isPasswordRecovery = true;
+      state.currentUser = null;
+      showAuthView("update-password");
+      renderAuthGate("Defina sua nova senha para continuar.");
+      renderCloudStatus();
+      return;
+    }
     if (session?.user && !isEmailConfirmed(session.user)) {
       await state.supabaseClient.auth.signOut();
       state.currentUser = null;
       renderAuthGate("Confirme seu e-mail antes de entrar.");
+      renderCloudStatus();
+      return;
+    }
+    if (state.isPasswordRecovery) {
+      state.currentUser = null;
+      showAuthView("update-password");
+      renderAuthGate("Defina sua nova senha para continuar.");
       renderCloudStatus();
       return;
     }
@@ -1195,7 +1218,7 @@ function renderCloudStatus(forcedText) {
 }
 
 function renderAuthGate(message) {
-  const isLogged = Boolean(state.currentUser);
+  const isLogged = Boolean(state.currentUser) && !state.isPasswordRecovery;
   document.body.classList.remove("auth-loading");
   els.authScreen.classList.toggle("is-hidden", isLogged);
   els.appShell.classList.toggle("is-hidden", !isLogged);
@@ -1237,6 +1260,9 @@ async function updatePassword(event) {
   const { error } = await state.supabaseClient.auth.updateUser({ password });
   if (error) return notify(error.message);
 
+  state.isPasswordRecovery = false;
+  await state.supabaseClient.auth.signOut();
+  state.currentUser = null;
   document.querySelector("#update-password").value = "";
   document.querySelector("#update-password-confirm").value = "";
   location.hash = "";
@@ -1302,6 +1328,7 @@ async function signUpSupabase() {
 async function signOutSupabase() {
   if (state.supabaseClient) await state.supabaseClient.auth.signOut();
   window.clearTimeout(state.syncTimer);
+  state.isPasswordRecovery = false;
   state.currentUser = null;
   state.isSyncing = false;
   state.search = "";
