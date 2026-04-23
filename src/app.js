@@ -136,6 +136,17 @@ function getCategory(type, key) {
   return state.settings.categories[type].find((item) => item[0] === key) || [key, key, "#667085"];
 }
 
+function paymentMethodLabel(value) {
+  const labels = {
+    pix: "Pix",
+    debit: "Debito",
+    credit: "Credito",
+    cash: "Dinheiro",
+    transfer: "Transferencia",
+  };
+  return labels[value] || "Outro";
+}
+
 function save() {
   localStorage.setItem(
     APP_STORAGE_KEY,
@@ -401,18 +412,48 @@ function renderCategoryBreakdown() {
     .join("");
 }
 
+function renderTransactionHighlights() {
+  const target = document.querySelector("#transaction-highlights");
+  if (!target) return;
+
+  const monthTransactions = getMonthTransactions();
+  const paidCount = monthTransactions.filter((item) => item.status === "paid").length;
+  const pendingCount = monthTransactions.filter((item) => item.status !== "paid").length;
+  const pixCount = monthTransactions.filter((item) => item.paymentMethod === "pix").length;
+  const creditCount = monthTransactions.filter((item) => item.paymentMethod === "credit").length;
+  const totalAmount = monthTransactions.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+  target.innerHTML = `
+    <article class="mini-stat-card">
+      <span>No mes</span>
+      <strong>${monthTransactions.length} lancamentos</strong>
+      <small>${money(totalAmount)} movimentados</small>
+    </article>
+    <article class="mini-stat-card">
+      <span>Status</span>
+      <strong>${paidCount} pagos</strong>
+      <small>${pendingCount} pendentes ou previstos</small>
+    </article>
+    <article class="mini-stat-card">
+      <span>Pagamento</span>
+      <strong>${pixCount} no Pix</strong>
+      <small>${creditCount} no credito</small>
+    </article>
+  `;
+}
+
 function renderTable() {
   const monthTransactions = getMonthTransactions();
   const filtered = monthTransactions
     .filter((item) => state.typeFilter === "all" || item.type === state.typeFilter)
     .filter((item) => {
-      const haystack = `${item.description} ${item.category} ${item.account}`.toLowerCase();
+      const haystack = `${item.description} ${item.category} ${item.account} ${item.paymentMethod || ""}`.toLowerCase();
       return haystack.includes(state.search.toLowerCase());
     })
     .sort((a, b) => b.date.localeCompare(a.date));
 
   if (!filtered.length) {
-    els.table.innerHTML = '<tr><td colspan="9" class="empty-state">Nenhum lancamento encontrado.</td></tr>';
+    els.table.innerHTML = '<tr><td colspan="10" class="empty-state">Nenhum lancamento encontrado.</td></tr>';
     return;
   }
 
@@ -431,6 +472,7 @@ function renderTable() {
           <td><span class="category-pill">${esc(label)}</span></td>
           <td>${esc(item.account)}</td>
           <td><span class="type-pill ${item.status || "paid"}">${statusLabel}</span></td>
+          <td><span class="payment-pill ${item.paymentMethod || "pix"}">${paymentMethodLabel(item.paymentMethod)}</span></td>
           <td>${item.dueDate ? parseLocalDate(item.dueDate).toLocaleDateString("pt-BR") : "-"}</td>
           <td><span class="type-pill ${item.type}">${typeLabel}</span></td>
           <td class="right money ${amountClass}">${sign} ${money(Number(item.amount))}</td>
@@ -660,6 +702,7 @@ function renderAll() {
   renderMonthLabel();
   renderSummary();
   renderCategoryBreakdown();
+  renderTransactionHighlights();
   renderTable();
   renderBudgets();
   renderGoals();
@@ -1701,6 +1744,10 @@ function bindEvents() {
     location.hash = "lancamentos";
     setSectionFromHash();
     document.querySelector("#description").focus();
+  });
+  document.querySelector("#jump-to-form").addEventListener("click", () => {
+    document.querySelector("#description").focus();
+    document.querySelector("#transaction-form").scrollIntoView({ behavior: "smooth", block: "start" });
   });
   document.querySelector("#seed-data").addEventListener("click", seedData);
   document.querySelectorAll(".segment").forEach((button) =>

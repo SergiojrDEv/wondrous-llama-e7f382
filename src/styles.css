@@ -415,6 +415,63 @@ h2 {
   gap: 18px;
 }
 
+.transactions-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.transaction-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.section-copy {
+  margin: 8px 0 0;
+  max-width: 760px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.transaction-composer,
+.month-transactions-panel {
+  width: 100%;
+}
+
+.transaction-highlights {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.mini-stat-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.mini-stat-card span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mini-stat-card strong {
+  font-size: 1.02rem;
+}
+
+.mini-stat-card small {
+  color: var(--muted);
+  font-weight: 700;
+}
+
 .panel {
   padding: 18px;
 }
@@ -603,6 +660,41 @@ td {
 .type-pill.investment {
   background: #efefff;
   color: var(--invest);
+}
+
+.payment-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.payment-pill.pix {
+  background: #e6f9f0;
+  color: #15803d;
+}
+
+.payment-pill.credit {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.payment-pill.debit {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.payment-pill.cash {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.payment-pill.transfer {
+  background: #ecfeff;
+  color: #0f766e;
 }
 
 .type-pill.pending,
@@ -863,6 +955,10 @@ td {
   .workspace-grid {
     grid-template-columns: 1fr;
   }
+
+  .transaction-highlights {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 760px) {
@@ -872,7 +968,8 @@ td {
   }
 
   .topbar,
-  .panel-header.table-tools {
+  .panel-header.table-tools,
+  .transaction-hero {
     display: grid;
   }
 

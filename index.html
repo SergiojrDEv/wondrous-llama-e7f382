@@ -224,11 +224,20 @@
     </section>
 
     <section class="section" id="lancamentos">
-      <div class="workspace-grid">
-        <form class="panel form-panel" id="transaction-form">
+      <div class="transactions-shell">
+        <article class="panel transaction-hero">
+          <div>
+            <p class="eyebrow">Lancamentos</p>
+            <h2>Registre um novo movimento sem misturar com o historico do mes</h2>
+            <p class="section-copy">Cadastre receitas, despesas e investimentos em uma area separada. Logo abaixo ficam apenas os lancamentos do mes, com filtros e forma de pagamento visivel.</p>
+          </div>
+          <button class="primary-btn" id="jump-to-form" type="button">Novo lancamento</button>
+        </article>
+
+        <form class="panel form-panel transaction-composer" id="transaction-form">
           <div class="panel-header">
             <div>
-              <p class="eyebrow">Cadastro</p>
+              <p class="eyebrow">Novo lancamento</p>
               <h2 id="transaction-form-title">Novo lancamento</h2>
             </div>
           </div>
@@ -323,10 +332,10 @@
           </div>
         </form>
 
-        <article class="panel table-panel">
+        <article class="panel table-panel month-transactions-panel">
           <div class="panel-header table-tools">
             <div>
-              <p class="eyebrow">Movimentos</p>
+              <p class="eyebrow">Lancamentos do mes</p>
               <h2>Lancamentos do mes</h2>
             </div>
             <div class="filter-actions">
@@ -340,6 +349,8 @@
             </div>
           </div>
 
+          <div class="transaction-highlights" id="transaction-highlights"></div>
+
           <div class="table-scroll">
             <table>
               <thead>
@@ -349,6 +360,7 @@
                   <th>Categoria</th>
                   <th>Conta</th>
                   <th>Status</th>
+                  <th>Pagamento</th>
                   <th>Vencimento</th>
                   <th>Tipo</th>
                   <th class="right">Valor</th>
