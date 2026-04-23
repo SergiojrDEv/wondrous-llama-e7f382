@@ -297,11 +297,25 @@ function notify(message) {
   window.setTimeout(() => els.toast.classList.remove("show"), 2400);
 }
 
+function isStandaloneMode() {
+  return Boolean(window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone);
+}
+
+function isIosDevice() {
+  return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+}
+
+function isSafariBrowser() {
+  const ua = window.navigator.userAgent;
+  return /safari/i.test(ua) && !/chrome|crios|android|edg/i.test(ua);
+}
+
 function updateInstallButton() {
   if (!els.installApp) return;
-  const standalone = window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone;
-  const canInstall = Boolean(state.deferredInstallPrompt) && !standalone;
-  els.installApp.classList.toggle("is-hidden", !canInstall);
+  const standalone = isStandaloneMode();
+  els.installApp.classList.toggle("is-hidden", standalone);
+  if (standalone) return;
+  els.installApp.textContent = state.deferredInstallPrompt ? "Instalar app" : "Como instalar";
 }
 
 function setupPwaSupport() {
@@ -330,7 +344,11 @@ function setupPwaSupport() {
 
 async function promptInstallApp() {
   if (!state.deferredInstallPrompt) {
-    notify("A instalacao ainda nao esta disponivel neste navegador.");
+    if (isIosDevice() && isSafariBrowser()) {
+      window.alert("No iPhone, abra o menu Compartilhar do Safari e toque em 'Adicionar a Tela de Inicio'.");
+      return;
+    }
+    window.alert("Neste navegador, abra o menu principal e procure por 'Instalar app', 'Instalar aplicativo' ou 'Adicionar a tela inicial'.");
     return;
   }
 
