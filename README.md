@@ -47,12 +47,11 @@ O app ja tem fallback para o projeto Supabase `gxwukctgfrquureyerli` usando a pu
 - Orcamentos por categoria.
 - Metas de investimento.
 - Grafico dos ultimos 6 meses.
-- Exportacao CSV, backup JSON e importacao JSON com dados e configuracoes.
+- Exportacao CSV, backup JSON e importacao JSON com previa antes de somar ou substituir dados.
 - Dados de exemplo para testar rapidamente.
 
 ## Proximos passos sugeridos
 
-- Adicionar autenticacao e sincronizacao com Supabase.
-- Criar edicao de lancamentos existentes.
-- Permitir configurar orcamentos e metas pela interface.
+- Melhorar relatorios de faturas de cartao.
+- Criar testes automatizados para importacao, parcelas e sincronizacao.
 - Separar regras de negocio em modulos caso o app cresca.

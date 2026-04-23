@@ -60,6 +60,7 @@ const state = {
   isSyncing: false,
   syncTimer: null,
   supabaseInitPromise: null,
+  pendingImport: null,
 };
 
 const els = {
@@ -829,17 +830,17 @@ function normalizeImportedDate(value) {
   return "";
 }
 
-function ensureImportedCategory(type, label) {
+function ensureImportedCategory(settings, type, label) {
   const name = String(label || "Outros").trim() || "Outros";
   const key = slugify(name) || "outros";
-  const categories = state.settings.categories[type] || state.settings.categories.expense;
+  const categories = settings.categories[type] || settings.categories.expense;
   if (!categories.some(([itemKey]) => itemKey === key)) {
     categories.push([key, name, "#667085", type === "expense" ? 0 : undefined]);
   }
   return key;
 }
 
-function normalizeImportedTransaction(row) {
+function normalizeImportedTransaction(row, settings) {
   const description = String(getImportedField(row, "description") || getImportedField(row, "note") || "").trim();
   const amount = Number(getImportedField(row, "amount"));
   const date = normalizeImportedDate(getImportedField(row, "date"));
@@ -851,7 +852,7 @@ function normalizeImportedTransaction(row) {
     : rawType.includes("invest")
       ? "investment"
       : "expense";
-  const category = ensureImportedCategory(type, getImportedField(row, "category"));
+  const category = ensureImportedCategory(settings, type, getImportedField(row, "category"));
   const paymentMethod = normalizePaymentMethod(getImportedField(row, "payment"));
   const isCredit = paymentMethod === "credit";
 
@@ -879,12 +880,62 @@ function normalizeImportedTransaction(row) {
 function normalizeImportedBackup(imported) {
   const rows = Array.isArray(imported) ? imported : imported.transactions;
   if (!Array.isArray(rows)) throw new Error("Formato invalido");
-  const transactions = rows.map(normalizeImportedTransaction).filter(Boolean);
+  const settings = imported.settings ? mergeSettings(clone(imported.settings)) : mergeSettings(clone(state.settings));
+  const transactions = rows.map((row) => normalizeImportedTransaction(row, settings)).filter(Boolean);
   if (!transactions.length) throw new Error("Nenhum lancamento valido");
   return {
     transactions,
-    settings: imported.settings ? mergeSettings(imported.settings) : state.settings,
+    settings,
+    ignored: rows.length - transactions.length,
+    total: rows.length,
   };
+}
+
+function showImportPreview(imported) {
+  state.pendingImport = imported;
+  const target = document.querySelector("#import-preview");
+  const currentCount = state.transactions.length;
+  target.innerHTML = `
+    <div>
+      <strong>Previa da importacao</strong>
+      <p>${imported.transactions.length} lancamentos validos encontrados.${imported.ignored ? ` ${imported.ignored} linha${imported.ignored === 1 ? "" : "s"} ignorada${imported.ignored === 1 ? "" : "s"} por falta de data, descricao ou valor.` : ""}</p>
+      <p>Hoje existem ${currentCount} lancamento${currentCount === 1 ? "" : "s"} no app.</p>
+    </div>
+    <div class="import-preview-actions">
+      <button class="primary-btn" type="button" data-import-action="merge">Somar aos dados atuais</button>
+      <button class="ghost-btn" type="button" data-import-action="replace">Substituir tudo</button>
+      <button class="danger-btn" type="button" data-import-action="cancel">Cancelar</button>
+    </div>
+  `;
+  target.classList.remove("is-hidden");
+}
+
+function clearImportPreview() {
+  state.pendingImport = null;
+  const target = document.querySelector("#import-preview");
+  target.innerHTML = "";
+  target.classList.add("is-hidden");
+}
+
+function applyPendingImport(mode) {
+  if (!state.pendingImport) return;
+  const imported = state.pendingImport;
+  if (mode === "replace") {
+    state.transactions = imported.transactions;
+    state.settings = imported.settings;
+  } else {
+    const byId = new Map(state.transactions.map((item) => [item.id, item]));
+    imported.transactions.forEach((item) => byId.set(item.id, item));
+    state.transactions = Array.from(byId.values());
+    state.settings = mergeSettings(imported.settings);
+  }
+  persist();
+  updateCategoryOptions();
+  updateAccountOptions();
+  updateCreditCardOptions();
+  renderAll();
+  clearImportPreview();
+  notify(mode === "replace" ? "Backup importado substituindo os dados." : "Backup somado aos dados atuais.");
 }
 
 function addCategory(event) {
@@ -1354,17 +1405,11 @@ async function syncToSupabase() {
 
   const client = state.supabaseClient;
   const userId = state.currentUser.id;
-  const { error: deleteTxError } = await client.from("transactions").delete().eq("user_id", userId);
-  if (deleteTxError) {
-    handleCloudError(deleteTxError);
-    return;
-  }
-
   const rows = state.transactions.map(toRemoteTransaction);
   if (rows.length) {
-    const { error: insertTxError } = await client.from("transactions").insert(rows);
-    if (insertTxError) {
-      handleCloudError(insertTxError);
+    const { error: upsertTxError } = await client.from("transactions").upsert(rows, { onConflict: "id" });
+    if (upsertTxError) {
+      handleCloudError(upsertTxError);
       return;
     }
   }
@@ -1375,6 +1420,25 @@ async function syncToSupabase() {
   if (settingsError) {
     handleCloudError(settingsError);
     return;
+  }
+
+  const { data: remoteRows, error: remoteRowsError } = await client
+    .from("transactions")
+    .select("id")
+    .eq("user_id", userId);
+  if (remoteRowsError) {
+    handleCloudError(remoteRowsError);
+    return;
+  }
+
+  const localIds = new Set(state.transactions.map((item) => item.id));
+  const idsToDelete = (remoteRows || []).map((item) => item.id).filter((id) => !localIds.has(id));
+  if (idsToDelete.length) {
+    const { error: deleteTxError } = await client.from("transactions").delete().eq("user_id", userId).in("id", idsToDelete);
+    if (deleteTxError) {
+      handleCloudError(deleteTxError);
+      return;
+    }
   }
 
   state.isSyncing = false;
@@ -1563,19 +1627,23 @@ function bindEvents() {
     try {
       const imported = JSON.parse(await file.text());
       const normalized = normalizeImportedBackup(imported);
-      state.transactions = normalized.transactions;
-      state.settings = normalized.settings;
-      persist();
-      updateCategoryOptions();
-      updateAccountOptions();
-      updateCreditCardOptions();
-      renderAll();
-      notify("Backup importado.");
+      showImportPreview(normalized);
     } catch (error) {
       notify("Nao foi possivel importar este arquivo.");
     } finally {
       event.target.value = "";
     }
+  });
+  document.querySelector("#import-preview").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-import-action]");
+    if (!button) return;
+    const action = button.dataset.importAction;
+    if (action === "cancel") {
+      clearImportPreview();
+      notify("Importacao cancelada.");
+      return;
+    }
+    applyPendingImport(action);
   });
   document.querySelector("#category-manage-list").addEventListener("click", (event) => {
     const removeButton = event.target.closest("[data-remove-category]");

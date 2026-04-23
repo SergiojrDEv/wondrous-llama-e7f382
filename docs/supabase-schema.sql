@@ -82,6 +82,12 @@ on public.transactions
 for delete
 using (auth.uid() = user_id);
 
+create index if not exists transactions_user_date_idx
+on public.transactions (user_id, date);
+
+create index if not exists transactions_user_created_idx
+on public.transactions (user_id, created_at);
+
 create table if not exists public.finance_settings (
   user_id uuid primary key references auth.users on delete cascade,
   settings jsonb not null default '{}'::jsonb,
