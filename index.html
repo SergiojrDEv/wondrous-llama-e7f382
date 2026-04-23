@@ -134,9 +134,9 @@
 
       <div class="topbar-actions">
         <div class="month-switcher" aria-label="Selecionar mes">
-          <button class="icon-btn" id="prev-month" type="button" aria-label="Mes anterior">‹</button>
+          <button class="icon-btn" id="prev-month" type="button" aria-label="Mes anterior">â€¹</button>
           <strong id="current-month">Abril 2026</strong>
-          <button class="icon-btn" id="next-month" type="button" aria-label="Proximo mes">›</button>
+          <button class="icon-btn" id="next-month" type="button" aria-label="Proximo mes">â€º</button>
         </div>
         <button class="ghost-btn" id="seed-data" type="button">Dados exemplo</button>
         <button class="primary-btn" id="open-transaction" type="button">Novo lancamento</button>
@@ -399,6 +399,7 @@
           <div>
             <p class="eyebrow">Limites</p>
             <h2>Orcamento por categoria</h2>
+            <p class="section-copy">Defina uma regra semanal e outra mensal para cada categoria de despesa. Assim voce acompanha o ritmo da semana sem perder a visao do fechamento do mes.</p>
           </div>
         </div>
         <div class="budget-grid" id="budget-list"></div>
@@ -467,6 +468,16 @@
           <button class="danger-btn" id="clear-data" type="button">Limpar dados</button>
         </div>
         <div class="import-preview is-hidden" id="import-preview"></div>
+      </article>
+      <article class="panel report-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Historico diario</p>
+            <h2>Tudo o que entrou e saiu por dia</h2>
+            <p class="section-copy">O historico abaixo acompanha o mes selecionado no topo e agrupa os lancamentos dia a dia para facilitar conferencia e revisao.</p>
+          </div>
+        </div>
+        <div class="daily-history-list" id="daily-history-list"></div>
       </article>
     </section>
 
@@ -632,7 +643,7 @@
             <p class="eyebrow">Metas</p>
             <h2 id="goal-modal-title">Editar meta</h2>
           </div>
-          <button class="icon-btn" id="goal-modal-close" type="button" aria-label="Fechar">×</button>
+          <button class="icon-btn" id="goal-modal-close" type="button" aria-label="Fechar">Ã—</button>
         </div>
 
         <label>
@@ -665,7 +676,7 @@
             <p class="eyebrow">Lancamentos</p>
             <h2 id="transaction-modal-title">Editar lancamento</h2>
           </div>
-          <button class="icon-btn" id="transaction-modal-close" type="button" aria-label="Fechar">×</button>
+          <button class="icon-btn" id="transaction-modal-close" type="button" aria-label="Fechar">Ã—</button>
         </div>
 
         <div class="segmented-control" id="transaction-modal-types" role="tablist" aria-label="Tipo de lancamento">

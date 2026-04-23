@@ -801,6 +801,11 @@ td {
   padding: 16px;
 }
 
+.budget-card {
+  display: grid;
+  gap: 12px;
+}
+
 .budget-card header,
 .goal-card header {
   display: flex;
@@ -818,6 +823,106 @@ td {
 .goal-card small {
   color: var(--muted);
   font-weight: 700;
+}
+
+.budget-rule-block {
+  display: grid;
+  gap: 8px;
+}
+
+.budget-rule-line {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.budget-rule-line span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.budget-rule-line strong {
+  font-size: 0.98rem;
+}
+
+.budget-rule-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+  padding-top: 6px;
+}
+
+.budget-rule-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.budget-rule-form input {
+  min-width: 0;
+}
+
+.daily-history-list {
+  display: grid;
+  gap: 14px;
+}
+
+.history-day-card {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fbfcfe;
+}
+
+.history-day-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.history-day-header strong {
+  display: block;
+  text-transform: capitalize;
+}
+
+.history-day-header small,
+.history-row small,
+.history-day-totals small {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.history-day-totals {
+  display: grid;
+  gap: 6px;
+  text-align: right;
+}
+
+.history-day-items {
+  display: grid;
+  gap: 10px;
+}
+
+.history-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.history-row strong {
+  display: block;
 }
 
 .goal-card {
@@ -1061,6 +1166,12 @@ td {
     grid-template-columns: 1fr;
   }
 
+  .budget-rule-form,
+  .history-day-header,
+  .history-row {
+    grid-template-columns: 1fr;
+  }
+
   .goal-summary-grid {
     grid-template-columns: 1fr;
   }
@@ -1115,5 +1226,15 @@ td {
 
   .nav-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .budget-rule-form,
+  .history-day-header,
+  .history-row {
+    display: grid;
+  }
+
+  .history-day-totals {
+    text-align: left;
   }
 }

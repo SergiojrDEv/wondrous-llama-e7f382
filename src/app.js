@@ -52,6 +52,15 @@ const defaultSettings = {
   { name: "Viagem", target: 9000, key: "fundos" },
   { name: "Aposentadoria", target: 120000, key: "previdencia" },
   ],
+  budgetRules: {
+    moradia: { weekly: 550, monthly: 2200 },
+    alimentacao: { weekly: 350, monthly: 1400 },
+    transporte: { weekly: 162.5, monthly: 650 },
+    saude: { weekly: 125, monthly: 500 },
+    lazer: { weekly: 150, monthly: 600 },
+    educacao: { weekly: 112.5, monthly: 450 },
+    outros: { weekly: 87.5, monthly: 350 },
+  },
 };
 
 function clone(value) {
@@ -152,6 +161,28 @@ function getCategory(type, key) {
   return state.settings.categories[type].find((item) => item[0] === key) || [key, key, "#667085"];
 }
 
+function mergeBudgetRules(saved = {}, expenseCategories = []) {
+  const result = {};
+  expenseCategories.forEach(([key, , , limit]) => {
+    const monthly = Number(saved?.[key]?.monthly ?? defaultSettings.budgetRules?.[key]?.monthly ?? limit ?? 0);
+    const weekly = Number(saved?.[key]?.weekly ?? defaultSettings.budgetRules?.[key]?.weekly ?? (monthly ? monthly / 4 : 0));
+    result[key] = {
+      weekly: Math.max(0, weekly || 0),
+      monthly: Math.max(0, monthly || 0),
+    };
+  });
+  return result;
+}
+
+function getBudgetRule(categoryKey) {
+  return state.settings.budgetRules?.[categoryKey] || { weekly: 0, monthly: 0 };
+}
+
+function syncCategoryMonthlyLimit(categoryKey, monthly) {
+  const category = state.settings.categories.expense.find(([itemKey]) => itemKey === categoryKey);
+  if (category) category[3] = monthly;
+}
+
 function mergeSubcategories(saved = {}) {
   const result = { expense: {}, income: {}, investment: {} };
   ["expense", "income", "investment"].forEach((type) => {
@@ -229,16 +260,18 @@ function load() {
 }
 
 function mergeSettings(saved = {}) {
+  const categories = {
+    expense: saved.categories?.expense?.length ? saved.categories.expense : clone(defaultSettings.categories.expense),
+    income: saved.categories?.income?.length ? saved.categories.income : clone(defaultSettings.categories.income),
+    investment: saved.categories?.investment?.length ? saved.categories.investment : clone(defaultSettings.categories.investment),
+  };
   return {
     accounts: saved.accounts?.length ? saved.accounts : [...defaultSettings.accounts],
     creditCards: saved.creditCards?.length ? saved.creditCards : clone(defaultSettings.creditCards),
-    categories: {
-      expense: saved.categories?.expense?.length ? saved.categories.expense : clone(defaultSettings.categories.expense),
-      income: saved.categories?.income?.length ? saved.categories.income : clone(defaultSettings.categories.income),
-      investment: saved.categories?.investment?.length ? saved.categories.investment : clone(defaultSettings.categories.investment),
-    },
+    categories,
     subcategories: mergeSubcategories(saved.subcategories),
     goals: saved.goals?.length ? saved.goals : clone(defaultSettings.goals),
+    budgetRules: mergeBudgetRules(saved.budgetRules, categories.expense),
   };
 }
 
@@ -512,14 +545,15 @@ function renderInsights(transactions, totals) {
   });
 
   state.settings.categories.expense.forEach(([key, label, , limit]) => {
-    if (!limit) return;
+    const threshold = Number(getBudgetRule(key).monthly || limit || 0);
+    if (!threshold) return;
     const used = transactions
       .filter((item) => item.type === "expense" && item.category === key)
       .reduce((sum, item) => sum + Number(item.amount), 0);
-    if (used >= limit * 0.8) {
+    if (used >= threshold * 0.8) {
       insights.push({
-        label: used > limit ? "Orcamento estourado" : "Perto do limite",
-        text: `${label}: ${money(used)} de ${money(limit)}`,
+        label: used > threshold ? "Orcamento estourado" : "Perto do limite",
+        text: `${label}: ${money(used)} de ${money(threshold)}`,
       });
     }
   });
@@ -644,7 +678,7 @@ function renderTable() {
             <div class="row-actions">
               ${item.status !== "paid" ? `<button class="row-action success" type="button" data-paid="${item.id}" title="Marcar como pago">Pago</button>` : ""}
               <button class="row-action neutral" type="button" data-edit="${item.id}" title="Editar">Editar</button>
-              <button class="row-action" type="button" data-remove="${item.id}" aria-label="Remover lancamento">×</button>
+              <button class="row-action" type="button" data-remove="${item.id}" aria-label="Remover lancamento">Ã—</button>
             </div>
           </td>
         </tr>
@@ -656,20 +690,119 @@ function renderTable() {
 function renderBudgets() {
   const expenses = getMonthTransactions().filter((item) => item.type === "expense");
   const target = document.querySelector("#budget-list");
+  const today = new Date();
+  const referenceDate = monthKey(state.currentDate) === monthKey(today)
+    ? today
+    : new Date(state.currentDate.getFullYear(), state.currentDate.getMonth(), 1);
+  const weekday = (referenceDate.getDay() + 6) % 7;
+  const weekStart = new Date(referenceDate);
+  weekStart.setDate(referenceDate.getDate() - weekday);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  const weekStartKey = toDateInput(weekStart);
+  const weekEndKey = toDateInput(weekEnd);
   target.innerHTML = state.settings.categories.expense
-    .map(([key, label, color, limit]) => {
-      const used = expenses
+    .map(([key, label, color]) => {
+      const rule = getBudgetRule(key);
+      const monthlyUsed = expenses
         .filter((item) => item.category === key)
         .reduce((sum, item) => sum + Number(item.amount), 0);
-      const pct = limit ? Math.min((used / limit) * 100, 100) : 0;
+      const weeklyUsed = expenses
+        .filter((item) => item.category === key && item.date >= weekStartKey && item.date <= weekEndKey)
+        .reduce((sum, item) => sum + Number(item.amount), 0);
+      const monthlyPct = rule.monthly ? Math.min((monthlyUsed / rule.monthly) * 100, 100) : 0;
+      const weeklyPct = rule.weekly ? Math.min((weeklyUsed / rule.weekly) * 100, 100) : 0;
       return `
         <article class="budget-card">
           <header>
             <strong>${esc(label)}</strong>
-            <small>${pct.toFixed(0)}%</small>
+            <small>Semana ${weeklyPct.toFixed(0)}% | Mes ${monthlyPct.toFixed(0)}%</small>
           </header>
-          <div class="bar"><span style="--value:${pct}%;--color:${color}"></span></div>
-          <p><span class="money">${money(used)}</span> de ${money(limit)}</p>
+          <div class="budget-rule-block">
+            <div class="budget-rule-line">
+              <div>
+                <span>Semana em foco</span>
+                <strong>${money(weeklyUsed)}</strong>
+              </div>
+              <small>de ${money(rule.weekly)}</small>
+            </div>
+            <div class="bar"><span style="--value:${weeklyPct}%;--color:${color}"></span></div>
+          </div>
+          <div class="budget-rule-block">
+            <div class="budget-rule-line">
+              <div>
+                <span>Mes atual</span>
+                <strong>${money(monthlyUsed)}</strong>
+              </div>
+              <small>de ${money(rule.monthly)}</small>
+            </div>
+            <div class="bar"><span style="--value:${monthlyPct}%;--color:${color}"></span></div>
+          </div>
+          <form class="budget-rule-form" data-budget-key="${esc(key)}">
+            <label>
+              Limite semanal
+              <input type="number" min="0" step="0.01" name="weekly" value="${Number(rule.weekly || 0)}">
+            </label>
+            <label>
+              Limite mensal
+              <input type="number" min="0" step="0.01" name="monthly" value="${Number(rule.monthly || 0)}">
+            </label>
+            <button class="mini-btn" type="submit">Salvar regra</button>
+          </form>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function renderDailyHistory() {
+  const target = document.querySelector("#daily-history-list");
+  if (!target) return;
+
+  const grouped = new Map();
+  getMonthTransactions()
+    .slice()
+    .sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || "").localeCompare(a.createdAt || ""))
+    .forEach((item) => {
+      grouped.set(item.date, [...(grouped.get(item.date) || []), item]);
+    });
+
+  if (!grouped.size) {
+    target.innerHTML = '<div class="empty-state">Nenhum lancamento registrado neste mes ainda.</div>';
+    return;
+  }
+
+  target.innerHTML = Array.from(grouped.entries())
+    .map(([date, items]) => {
+      const income = items
+        .filter((item) => item.type === "income")
+        .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+      const outflow = items
+        .filter((item) => item.type !== "income")
+        .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+      return `
+        <article class="history-day-card">
+          <header class="history-day-header">
+            <div>
+              <strong>${parseLocalDate(date).toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}</strong>
+              <small>${items.length} lancamento${items.length === 1 ? "" : "s"}</small>
+            </div>
+            <div class="history-day-totals">
+              <small>Entradas: <span class="money positive">${money(income)}</span></small>
+              <small>Saidas: <span class="money negative">${money(outflow)}</span></small>
+            </div>
+          </header>
+          <div class="history-day-items">
+            ${items.map((item) => `
+              <div class="history-row">
+                <div>
+                  <strong>${esc(item.description)}</strong>
+                  <small>${esc(categoryDisplayLabel(item))} | ${esc(paymentMethodLabel(item.paymentMethod))}</small>
+                </div>
+                <strong class="money ${item.type === "income" ? "positive" : "negative"}">${item.type === "income" ? "+" : "-"} ${money(Number(item.amount || 0))}</strong>
+              </div>
+            `).join("")}
+          </div>
         </article>
       `;
     })
@@ -1021,6 +1154,7 @@ function renderAll() {
   renderTransactionHighlights();
   renderTable();
   renderBudgets();
+  renderDailyHistory();
   renderGoalsSummary();
   renderGoals();
   renderSettings();
@@ -1375,6 +1509,12 @@ function addCategory(event) {
   }
 
   state.settings.categories[type].push([key, name, color, type === "expense" ? limit : 0]);
+  if (type === "expense") {
+    state.settings.budgetRules[key] = {
+      weekly: limit ? limit / 4 : 0,
+      monthly: limit,
+    };
+  }
   event.currentTarget.reset();
   document.querySelector("#new-category-color").value = "#0b7285";
   persist();
@@ -1488,6 +1628,7 @@ function removeCategory(type, key) {
   state.settings.categories[type] = state.settings.categories[type].filter(([itemKey]) => itemKey !== key);
   if (state.settings.subcategories?.[type]?.[key]) delete state.settings.subcategories[type][key];
   state.settings.goals = state.settings.goals.filter((goal) => goal.key !== key);
+  if (state.settings.budgetRules?.[key]) delete state.settings.budgetRules[key];
   persist();
   updateCategoryOptions();
   renderAll();
@@ -1535,12 +1676,31 @@ function removeCreditCard(index) {
 function editExpenseLimit(key) {
   const category = state.settings.categories.expense.find(([itemKey]) => itemKey === key);
   if (!category) return;
-  const next = prompt("Novo limite mensal para esta categoria:", category[3] || 0);
+  const current = getBudgetRule(key);
+  const next = prompt("Novo limite mensal para esta categoria:", current.monthly || category[3] || 0);
   if (next === null) return;
-  category[3] = Math.max(0, Number(next) || 0);
+  const monthly = Math.max(0, Number(next) || 0);
+  state.settings.budgetRules[key] ||= { weekly: 0, monthly: 0 };
+  state.settings.budgetRules[key].monthly = monthly;
+  state.settings.budgetRules[key].weekly = current.weekly || (monthly ? monthly / 4 : 0);
+  syncCategoryMonthlyLimit(key, monthly);
   persist();
   renderAll();
   notify("Limite atualizado.");
+}
+
+function saveBudgetRule(event) {
+  event.preventDefault();
+  const form = event.target.closest(".budget-rule-form");
+  const key = form.dataset.budgetKey;
+  if (!key) return;
+  const weekly = Math.max(0, Number(new FormData(form).get("weekly")) || 0);
+  const monthly = Math.max(0, Number(new FormData(form).get("monthly")) || 0);
+  state.settings.budgetRules[key] = { weekly, monthly };
+  syncCategoryMonthlyLimit(key, monthly);
+  persist();
+  renderAll();
+  notify("Regras de gasto atualizadas.");
 }
 
 async function initSupabase() {
@@ -2234,6 +2394,10 @@ function bindEvents() {
     persist();
     renderAll();
     notify("Dados limpos.");
+  });
+  document.querySelector("#budget-list").addEventListener("submit", (event) => {
+    const form = event.target.closest(".budget-rule-form");
+    if (form) saveBudgetRule(event);
   });
   document.querySelector("#import-json").addEventListener("change", async (event) => {
     const [file] = event.target.files;
