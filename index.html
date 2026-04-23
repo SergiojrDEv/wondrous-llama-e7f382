@@ -585,8 +585,23 @@
 
       </div>
 
-      <div class="settings-lists">
-        <article class="panel">
+      <div class="panel settings-manage-shell">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Gerenciar</p>
+            <h2>Escolha o que quer organizar</h2>
+          </div>
+        </div>
+        <div class="manage-switcher" id="settings-manage-switcher">
+          <button class="manage-tab is-active" type="button" data-manage-view="categories">Categorias</button>
+          <button class="manage-tab" type="button" data-manage-view="accounts">Contas</button>
+          <button class="manage-tab" type="button" data-manage-view="cards">Cartoes</button>
+          <button class="manage-tab" type="button" data-manage-view="goals">Metas</button>
+          <button class="manage-tab" type="button" data-manage-view="tags">Etiquetas</button>
+        </div>
+
+        <div class="settings-manage-panels">
+        <article class="panel manage-panel is-active" data-manage-panel="categories">
           <div class="panel-header">
             <div>
               <p class="eyebrow">Gerenciar</p>
@@ -595,7 +610,7 @@
           </div>
           <div class="manage-list" id="category-manage-list"></div>
         </article>
-        <article class="panel">
+        <article class="panel manage-panel" data-manage-panel="accounts">
           <div class="panel-header">
             <div>
               <p class="eyebrow">Gerenciar</p>
@@ -604,7 +619,7 @@
           </div>
           <div class="manage-list" id="account-manage-list"></div>
         </article>
-        <article class="panel">
+        <article class="panel manage-panel" data-manage-panel="cards">
           <div class="panel-header">
             <div>
               <p class="eyebrow">Gerenciar</p>
@@ -613,7 +628,7 @@
           </div>
           <div class="manage-list" id="card-manage-list"></div>
         </article>
-        <article class="panel">
+        <article class="panel manage-panel" data-manage-panel="goals">
           <div class="panel-header">
             <div>
               <p class="eyebrow">Gerenciar</p>
@@ -622,7 +637,7 @@
           </div>
           <div class="manage-list" id="goal-manage-list"></div>
         </article>
-        <article class="panel">
+        <article class="panel manage-panel" data-manage-panel="tags">
           <div class="panel-header">
             <div>
               <p class="eyebrow">Gerenciar</p>
@@ -631,6 +646,7 @@
           </div>
           <div class="manage-list" id="subcategory-manage-list"></div>
         </article>
+        </div>
       </div>
     </section>
   </main>

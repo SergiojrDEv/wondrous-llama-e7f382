@@ -71,6 +71,7 @@ const state = {
   transactions: [],
   settings: clone(defaultSettings),
   currentDate: new Date(),
+  manageView: "categories",
   activeType: "expense",
   search: "",
   typeFilter: "all",
@@ -940,6 +941,7 @@ function saveGoalFromModal(event) {
 }
 
 function renderSettings() {
+  renderManagePanels();
   renderCategoryManager();
   renderAccountManager();
   renderCardManager();
@@ -949,6 +951,15 @@ function renderSettings() {
   renderSubcategoryParentOptions();
   updateTransactionModalAccounts();
   updateCreditCardOptions();
+}
+
+function renderManagePanels() {
+  document.querySelectorAll(".manage-tab").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.manageView === state.manageView);
+  });
+  document.querySelectorAll(".manage-panel").forEach((panel) => {
+    panel.classList.toggle("is-active", panel.dataset.managePanel === state.manageView);
+  });
 }
 
 function renderCategoryManager() {
@@ -2500,6 +2511,12 @@ function bindEvents() {
     const [type, categoryKey] = form.dataset.subcategoryInline.split(":");
     const name = new FormData(form).get("name");
     addInlineSubcategory(type, categoryKey, String(name || ""));
+  });
+  document.querySelector("#settings-manage-switcher").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-manage-view]");
+    if (!button) return;
+    state.manageView = button.dataset.manageView;
+    renderManagePanels();
   });
   document.querySelector("#goals-list").addEventListener("click", (event) => {
     const contributeButton = event.target.closest("[data-goal-contribute]");
