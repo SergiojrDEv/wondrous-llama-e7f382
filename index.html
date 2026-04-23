@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finance Flow | Controle financeiro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="src/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+  <script src="src/app.js" defer></script>
+</head>
+<body>
+  <section class="auth-screen" id="auth-screen">
+    <div class="auth-card">
+      <a class="brand auth-brand" href="#" aria-label="Finance Flow">
+        <span class="brand-mark">F</span>
+        <span>
+          <strong>Finance Flow</strong>
+          <small>Controle financeiro</small>
+        </span>
+      </a>
+
+      <div>
+        <p class="eyebrow">Finance Flow</p>
+        <h1 id="auth-title">Acesse sua conta</h1>
+      </div>
+
+      <form class="auth-form" id="login-form" data-auth-view="login">
+        <label>
+          E-mail
+          <input id="login-email" type="email" placeholder="seu@email.com" autocomplete="email" required>
+        </label>
+        <label>
+          Senha
+          <input id="login-password" type="password" placeholder="Sua senha" autocomplete="current-password" minlength="6" required>
+        </label>
+        <button class="primary-btn full" id="login-submit" type="submit">Entrar</button>
+        <button class="ghost-btn full" id="login-create" type="button">Criar conta</button>
+      </form>
+
+      <form class="auth-form is-hidden" id="signup-form" data-auth-view="signup">
+        <label>
+          Nome completo
+          <input id="signup-name" type="text" placeholder="Seu nome completo" autocomplete="name" required>
+        </label>
+        <div class="auth-field-row">
+          <label>
+            CPF
+            <input id="signup-cpf" type="text" placeholder="000.000.000-00" inputmode="numeric" maxlength="14" required>
+          </label>
+          <label>
+            Telefone
+            <input id="signup-phone" type="tel" placeholder="(00) 00000-0000" inputmode="tel" required>
+          </label>
+        </div>
+        <label>
+          Data de nascimento
+          <input id="signup-birthdate" type="date" required>
+        </label>
+        <label>
+          E-mail
+          <input id="signup-email" type="email" placeholder="seu@email.com" autocomplete="email" required>
+        </label>
+        <label>
+          Senha
+          <input id="signup-password" type="password" placeholder="Minimo 6 caracteres" autocomplete="new-password" minlength="6" required>
+        </label>
+        <button class="primary-btn full" id="signup-submit" type="submit">Criar conta</button>
+        <button class="ghost-btn full" id="signup-back" type="button">Voltar para login</button>
+      </form>
+
+      <p class="auth-note" id="auth-note">Entre para continuar.</p>
+    </div>
+  </section>
+
+  <aside class="sidebar is-hidden" id="sidebar" aria-label="Navegacao principal">
+    <a class="brand" href="#visao-geral" aria-label="Finance Flow">
+      <span class="brand-mark">F</span>
+      <span>
+        <strong>Finance Flow</strong>
+        <small>Controle financeiro</small>
+      </span>
+    </a>
+
+    <nav class="nav-list">
+      <a class="nav-item active" href="#visao-geral" data-section="visao-geral">Visao geral</a>
+      <a class="nav-item" href="#lancamentos" data-section="lancamentos">Lancamentos</a>
+      <a class="nav-item" href="#orcamentos" data-section="orcamentos">Orcamentos</a>
+      <a class="nav-item" href="#metas" data-section="metas">Metas</a>
+      <a class="nav-item" href="#relatorios" data-section="relatorios">Relatorios</a>
+      <a class="nav-item" href="#ajustes" data-section="ajustes">Ajustes</a>
+    </nav>
+
+    <div class="sidebar-panel">
+      <span class="panel-kicker">Saude financeira</span>
+      <strong id="health-score">0%</strong>
+      <p id="health-copy">Adicione receitas e despesas para medir o mes.</p>
+    </div>
+  </aside>
+
+  <main class="app-shell is-hidden" id="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Painel financeiro</p>
+        <h1>Organize seu dinheiro com clareza</h1>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="month-switcher" aria-label="Selecionar mes">
+          <button class="icon-btn" id="prev-month" type="button" aria-label="Mes anterior">‹</button>
+          <strong id="current-month">Abril 2026</strong>
+          <button class="icon-btn" id="next-month" type="button" aria-label="Proximo mes">›</button>
+        </div>
+        <button class="ghost-btn" id="seed-data" type="button">Dados exemplo</button>
+        <button class="primary-btn" id="open-transaction" type="button">Novo lancamento</button>
+        <button class="danger-btn" id="logout-btn" type="button">Sair</button>
+      </div>
+    </header>
+
+    <section class="section active" id="visao-geral">
+      <div class="summary-grid" aria-label="Resumo do mes">
+        <article class="metric-card income">
+          <span>Receitas</span>
+          <strong id="income-total">R$ 0,00</strong>
+          <small id="income-count">0 lancamentos</small>
+        </article>
+        <article class="metric-card expense">
+          <span>Despesas</span>
+          <strong id="expense-total">R$ 0,00</strong>
+          <small id="expense-count">0 categorias</small>
+        </article>
+        <article class="metric-card invest">
+          <span>Investido</span>
+          <strong id="invest-total">R$ 0,00</strong>
+          <small id="invest-rate">0% da receita</small>
+        </article>
+        <article class="metric-card balance">
+          <span>Saldo livre</span>
+          <strong id="free-balance">R$ 0,00</strong>
+          <small id="commitment-rate">0% comprometido</small>
+        </article>
+      </div>
+
+      <div class="smart-grid">
+        <article class="panel smart-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Resumo inteligente</p>
+              <h2 id="smart-title">Seu mes em uma frase</h2>
+            </div>
+          </div>
+          <p class="smart-copy" id="smart-copy">Adicione lancamentos para receber uma leitura do mes.</p>
+          <div class="smart-metrics">
+            <div>
+              <span>Gasto diario seguro</span>
+              <strong id="daily-safe">R$ 0,00</strong>
+            </div>
+            <div>
+              <span>Comparativo</span>
+              <strong id="month-comparison">Sem historico</strong>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Proximos passos</p>
+              <h2>Alertas e vencimentos</h2>
+            </div>
+          </div>
+          <div class="insight-list" id="insight-list"></div>
+        </article>
+      </div>
+
+      <div class="dashboard-grid">
+        <article class="panel chart-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Fluxo</p>
+              <h2>Ultimos 6 meses</h2>
+            </div>
+            <span class="status-pill" id="trend-status">Sem dados</span>
+          </div>
+          <canvas id="cashflow-chart" height="120" aria-label="Grafico de fluxo financeiro"></canvas>
+        </article>
+
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Categorias</p>
+              <h2>Maiores despesas</h2>
+            </div>
+          </div>
+          <div class="stack-list" id="category-breakdown"></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="lancamentos">
+      <div class="workspace-grid">
+        <form class="panel form-panel" id="transaction-form">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Cadastro</p>
+              <h2>Novo lancamento</h2>
+            </div>
+          </div>
+
+          <div class="segmented-control" role="tablist" aria-label="Tipo de lancamento">
+            <button class="segment active" type="button" data-type="expense">Despesa</button>
+            <button class="segment" type="button" data-type="income">Receita</button>
+            <button class="segment" type="button" data-type="investment">Investimento</button>
+          </div>
+
+          <label>
+            Descricao
+            <input id="description" name="description" type="text" placeholder="Ex: supermercado, salario, Tesouro Direto" required>
+          </label>
+
+          <div class="field-row">
+            <label>
+              Categoria
+              <select id="category" name="category" required></select>
+            </label>
+            <label>
+              Conta
+              <select id="account" name="account" required></select>
+            </label>
+          </div>
+
+          <div class="field-row">
+            <label>
+              Valor
+              <input id="amount" name="amount" type="number" min="0.01" step="0.01" placeholder="0,00" required>
+            </label>
+            <label>
+              Data
+              <input id="date" name="date" type="date" required>
+            </label>
+          </div>
+
+          <div class="field-row">
+            <label>
+              Status
+              <select id="status" name="status" required>
+                <option value="paid">Pago</option>
+                <option value="pending">Pendente</option>
+                <option value="planned">Previsto</option>
+              </select>
+            </label>
+            <label>
+              Vencimento
+              <input id="due-date" name="dueDate" type="date">
+            </label>
+          </div>
+
+          <div class="field-row">
+            <label>
+              Pagamento
+              <select id="payment-method" name="paymentMethod" required>
+                <option value="pix">Pix</option>
+                <option value="debit">Debito</option>
+                <option value="credit">Credito</option>
+                <option value="cash">Dinheiro</option>
+                <option value="transfer">Transferencia</option>
+              </select>
+            </label>
+            <label>
+              Parcelas
+              <input id="installments" name="installments" type="number" min="1" max="48" value="1">
+            </label>
+          </div>
+
+          <div class="field-row">
+            <label>
+              Recorrencia
+              <select id="recurrence" name="recurrence">
+                <option value="none">Nao repetir</option>
+                <option value="monthly">Mensal</option>
+              </select>
+            </label>
+            <label>
+              Repetir por
+              <input id="repeat-count" name="repeatCount" type="number" min="1" max="60" value="1">
+            </label>
+          </div>
+
+          <button class="primary-btn full" type="submit">Salvar lancamento</button>
+        </form>
+
+        <article class="panel table-panel">
+          <div class="panel-header table-tools">
+            <div>
+              <p class="eyebrow">Movimentos</p>
+              <h2>Lancamentos do mes</h2>
+            </div>
+            <div class="filter-actions">
+              <input id="search" type="search" placeholder="Buscar">
+              <select id="type-filter" aria-label="Filtrar tipo">
+                <option value="all">Todos</option>
+                <option value="income">Receitas</option>
+                <option value="expense">Despesas</option>
+                <option value="investment">Investimentos</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Descricao</th>
+                  <th>Categoria</th>
+                  <th>Conta</th>
+                  <th>Status</th>
+                  <th>Vencimento</th>
+                  <th>Tipo</th>
+                  <th class="right">Valor</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="transaction-table"></tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="orcamentos">
+      <article class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Limites</p>
+            <h2>Orcamento por categoria</h2>
+          </div>
+        </div>
+        <div class="budget-grid" id="budget-list"></div>
+      </article>
+    </section>
+
+    <section class="section" id="metas">
+      <div class="goals-grid" id="goals-list"></div>
+    </section>
+
+    <section class="section" id="relatorios">
+      <article class="panel report-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Exportacao</p>
+            <h2>Relatorios e backups</h2>
+          </div>
+        </div>
+        <div class="report-actions">
+          <button class="primary-btn" id="export-csv" type="button">Exportar CSV</button>
+          <button class="ghost-btn" id="export-json" type="button">Exportar JSON</button>
+          <label class="import-label">
+            Importar JSON
+            <input id="import-json" type="file" accept="application/json">
+          </label>
+          <button class="danger-btn" id="clear-data" type="button">Limpar dados</button>
+        </div>
+      </article>
+    </section>
+
+    <section class="section" id="ajustes">
+      <div class="settings-grid">
+        <form class="panel settings-panel" id="category-form">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Categorias</p>
+              <h2>Criar nova categoria</h2>
+            </div>
+          </div>
+          <div class="field-row">
+            <label>
+              Tipo
+              <select id="new-category-type" required>
+                <option value="expense">Despesa</option>
+                <option value="income">Receita</option>
+                <option value="investment">Investimento</option>
+              </select>
+            </label>
+            <label>
+              Nome
+              <input id="new-category-name" type="text" placeholder="Ex: Pets, Impostos, Bonus" required>
+            </label>
+          </div>
+          <div class="field-row">
+            <label>
+              Cor
+              <input id="new-category-color" type="color" value="#0b7285" required>
+            </label>
+            <label>
+              Limite mensal
+              <input id="new-category-limit" type="number" min="0" step="0.01" placeholder="Opcional">
+            </label>
+          </div>
+          <button class="primary-btn full" type="submit">Adicionar categoria</button>
+        </form>
+
+        <form class="panel settings-panel" id="account-form">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Contas</p>
+              <h2>Criar nova conta</h2>
+            </div>
+          </div>
+          <label>
+            Nome da conta
+            <input id="new-account-name" type="text" placeholder="Ex: Nubank, Itau, XP" required>
+          </label>
+          <button class="primary-btn full" type="submit">Adicionar conta</button>
+        </form>
+
+        <form class="panel settings-panel" id="goal-form">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Metas</p>
+              <h2>Criar nova meta</h2>
+            </div>
+          </div>
+          <label>
+            Nome
+            <input id="new-goal-name" type="text" placeholder="Ex: Carro, viagem, reserva" required>
+          </label>
+          <div class="field-row">
+            <label>
+              Categoria de investimento
+              <select id="new-goal-category" required></select>
+            </label>
+            <label>
+              Valor alvo
+              <input id="new-goal-target" type="number" min="1" step="0.01" placeholder="0,00" required>
+            </label>
+          </div>
+          <button class="primary-btn full" type="submit">Adicionar meta</button>
+        </form>
+      </div>
+
+      <div class="settings-lists">
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Gerenciar</p>
+              <h2>Categorias</h2>
+            </div>
+          </div>
+          <div class="manage-list" id="category-manage-list"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Gerenciar</p>
+              <h2>Contas</h2>
+            </div>
+          </div>
+          <div class="manage-list" id="account-manage-list"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Gerenciar</p>
+              <h2>Metas</h2>
+            </div>
+          </div>
+          <div class="manage-list" id="goal-manage-list"></div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
