@@ -321,7 +321,7 @@ h2 {
   margin-bottom: 18px;
 }
 
-.overview-hero {
+.panel.overview-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
   gap: 18px;
@@ -332,11 +332,11 @@ h2 {
   color: #f8fafc;
 }
 
-.overview-hero .eyebrow {
+.panel.overview-hero .eyebrow {
   color: #d6e3f4;
 }
 
-.overview-hero h2 {
+.panel.overview-hero h2 {
   font-size: clamp(1.2rem, 2vw, 1.65rem);
   color: #ffffff;
 }
@@ -347,7 +347,7 @@ h2 {
   font-weight: 600;
 }
 
-.overview-hero-side {
+.panel.overview-hero .overview-hero-side {
   display: grid;
   align-content: center;
   justify-items: start;
@@ -357,12 +357,12 @@ h2 {
   background: rgba(255, 255, 255, 0.12);
 }
 
-.overview-hero-label,
-.overview-hero-side small {
+.panel.overview-hero .overview-hero-label,
+.panel.overview-hero .overview-hero-side small {
   color: #d6e3f4;
 }
 
-.overview-hero-side strong {
+.panel.overview-hero .overview-hero-side strong {
   font-size: clamp(1.5rem, 2.5vw, 2.2rem);
   color: #ffffff;
 }
