@@ -678,7 +678,7 @@ function renderTable() {
             <div class="row-actions">
               ${item.status !== "paid" ? `<button class="row-action success" type="button" data-paid="${item.id}" title="Marcar como pago">Pago</button>` : ""}
               <button class="row-action neutral" type="button" data-edit="${item.id}" title="Editar">Editar</button>
-              <button class="row-action" type="button" data-remove="${item.id}" aria-label="Remover lancamento">Ã—</button>
+              <button class="row-action" type="button" data-remove="${item.id}" aria-label="Remover lancamento">X</button>
             </div>
           </td>
         </tr>
