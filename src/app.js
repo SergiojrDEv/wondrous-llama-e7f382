@@ -929,9 +929,23 @@ async function initSupabase() {
   state.cloudReady = true;
 
   const { data } = await state.supabaseClient.auth.getSession();
-  if (data.session) await state.supabaseClient.auth.signOut();
-  state.currentUser = null;
-  state.supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+  if (data.session?.user && !isEmailConfirmed(data.session.user)) {
+    await state.supabaseClient.auth.signOut();
+    state.currentUser = null;
+    renderAuthGate("Confirme seu e-mail antes de entrar.");
+    renderCloudStatus();
+  } else {
+    state.currentUser = data.session?.user || null;
+    renderAuthGate();
+    renderCloudStatus();
+    if (state.currentUser) {
+      await saveUserProfileFromMetadata(state.currentUser);
+      await pullFromSupabase({ silent: true });
+    }
+  }
+
+  state.supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    if (event === "INITIAL_SESSION") return;
     if (session?.user && !isEmailConfirmed(session.user)) {
       await state.supabaseClient.auth.signOut();
       state.currentUser = null;
@@ -944,8 +958,6 @@ async function initSupabase() {
     renderCloudStatus();
     if (state.currentUser) await pullFromSupabase({ silent: true });
   });
-  renderAuthGate();
-  renderCloudStatus();
 }
 
 async function loadSupabaseConfig() {
@@ -997,6 +1009,9 @@ async function signInSupabase(event) {
     renderAuthGate("Confirme seu e-mail antes de entrar.");
     return notify("Confirme seu e-mail antes de entrar.");
   }
+  state.currentUser = data.user;
+  renderAuthGate();
+  renderCloudStatus();
   await saveUserProfileFromMetadata(data.user);
   await pullFromSupabase({ silent: true });
   notify("Login conectado.");
