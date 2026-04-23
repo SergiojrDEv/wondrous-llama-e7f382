@@ -110,7 +110,8 @@
 
     <nav class="nav-list">
       <a class="nav-item active" href="#visao-geral" data-section="visao-geral">Visao geral</a>
-      <a class="nav-item" href="#lancamentos" data-section="lancamentos">Lancamentos</a>
+      <a class="nav-item" href="#novo-lancamento" data-section="novo-lancamento">Novo lancamento</a>
+      <a class="nav-item" href="#lancamentos-mes" data-section="lancamentos-mes">Lancamentos do mes</a>
       <a class="nav-item" href="#orcamentos" data-section="orcamentos">Orcamentos</a>
       <a class="nav-item" href="#metas" data-section="metas">Metas</a>
       <a class="nav-item" href="#relatorios" data-section="relatorios">Relatorios</a>
@@ -223,15 +224,15 @@
       </div>
     </section>
 
-    <section class="section" id="lancamentos">
+    <section class="section" id="novo-lancamento">
       <div class="transactions-shell">
         <article class="panel transaction-hero">
           <div>
-            <p class="eyebrow">Lancamentos</p>
-            <h2>Registre um novo movimento sem misturar com o historico do mes</h2>
-            <p class="section-copy">Cadastre receitas, despesas e investimentos em uma area separada. Logo abaixo ficam apenas os lancamentos do mes, com filtros e forma de pagamento visivel.</p>
+            <p class="eyebrow">Novo lancamento</p>
+            <h2>Cadastre um movimento em uma tela dedicada</h2>
+            <p class="section-copy">Use esta area apenas para criar receitas, despesas e investimentos. O historico do mes fica em outra tela, mais limpa para consultar, editar e filtrar.</p>
           </div>
-          <button class="primary-btn" id="jump-to-form" type="button">Novo lancamento</button>
+          <button class="ghost-btn" id="go-to-month-transactions" type="button">Ver lancamentos do mes</button>
         </article>
 
         <form class="panel form-panel transaction-composer" id="transaction-form">
@@ -335,6 +336,20 @@
             <button class="ghost-btn full is-hidden" id="cancel-edit" type="button">Cancelar edicao</button>
           </div>
         </form>
+
+      </div>
+    </section>
+
+    <section class="section" id="lancamentos-mes">
+      <div class="transactions-shell">
+        <article class="panel transaction-hero">
+          <div>
+            <p class="eyebrow">Lancamentos do mes</p>
+            <h2>Consulte e ajuste o mes sem misturar com o cadastro</h2>
+            <p class="section-copy">Aqui ficam os lancamentos do periodo atual com busca, filtros, formas de pagamento e edicao direta. Para cadastrar um novo item, use a tela propria de novo lancamento.</p>
+          </div>
+          <button class="primary-btn" id="go-to-new-transaction" type="button">Novo lancamento</button>
+        </article>
 
         <article class="panel table-panel month-transactions-panel">
           <div class="panel-header table-tools">

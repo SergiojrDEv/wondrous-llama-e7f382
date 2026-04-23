@@ -721,7 +721,7 @@ function renderGoalsSummary() {
 function openGoalContribution(index) {
   const goal = state.settings.goals[index];
   if (!goal) return;
-  location.hash = "lancamentos";
+  location.hash = "novo-lancamento";
   setSectionFromHash();
   setActiveType("investment");
   updateCategoryOptions();
@@ -2108,13 +2108,19 @@ function bindEvents() {
     renderAll();
   });
   document.querySelector("#open-transaction").addEventListener("click", () => {
-    location.hash = "lancamentos";
+    location.hash = "novo-lancamento";
     setSectionFromHash();
     document.querySelector("#description").focus();
   });
-  document.querySelector("#jump-to-form").addEventListener("click", () => {
+  document.querySelector("#go-to-new-transaction").addEventListener("click", () => {
+    location.hash = "novo-lancamento";
+    setSectionFromHash();
     document.querySelector("#description").focus();
     document.querySelector("#transaction-form").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  document.querySelector("#go-to-month-transactions").addEventListener("click", () => {
+    location.hash = "lancamentos-mes";
+    setSectionFromHash();
   });
   document.querySelector("#seed-data").addEventListener("click", seedData);
   document.querySelectorAll(".segment").forEach((button) =>
@@ -2273,7 +2279,8 @@ function bindEvents() {
 }
 
 function setSectionFromHash() {
-  const id = location.hash.replace("#", "") || "visao-geral";
+  const rawId = location.hash.replace("#", "") || "visao-geral";
+  const id = rawId === "lancamentos" ? "novo-lancamento" : rawId;
   document.querySelectorAll(".section").forEach((section) => {
     section.classList.toggle("active", section.id === id);
   });
