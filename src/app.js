@@ -415,11 +415,24 @@ function renderSummary() {
   const investRate = totals.income ? (totals.investment / totals.income) * 100 : 0;
   const commitment = totals.income ? ((totals.expense + totals.investment) / totals.income) * 100 : 0;
   const hasTransactions = transactions.length > 0;
-  const health = totals.income
-    ? Math.max(0, Math.min(100, 100 - commitment + investRate))
-    : hasTransactions
-      ? Math.max(12, Math.min(58, totals.investment > 0 ? 36 + Math.min(22, totals.investment / 100) : 18 - Math.min(8, totals.expense / 500)))
-      : 0;
+  let health = 0;
+  if (totals.income) {
+    const commitmentGap = commitment - 100;
+    const healthyHeadroom = Math.max(0, 100 - commitment);
+    health = 58 + Math.min(22, healthyHeadroom * 0.3) + Math.min(12, investRate * 0.45);
+    if (commitment > 78) health -= (commitment - 78) * 0.45;
+    if (commitment > 92) health -= (commitment - 92) * 0.4;
+    if (commitmentGap > 0) health -= Math.min(18, commitmentGap * 0.42);
+    if (free >= 0) {
+      health += Math.min(8, free / Math.max(180, totals.income * 0.05));
+    } else {
+      const negativeRatio = Math.abs(free) / Math.max(1, totals.income);
+      health -= Math.min(16, negativeRatio * 42);
+    }
+    health = Math.max(commitmentGap > 0 ? 12 : 18, Math.min(96, health));
+  } else if (hasTransactions) {
+    health = Math.max(12, Math.min(58, totals.investment > 0 ? 36 + Math.min(22, totals.investment / 100) : 18 - Math.min(8, totals.expense / 500)));
+  }
 
   document.querySelector("#income-total").textContent = money(totals.income);
   document.querySelector("#expense-total").textContent = money(totals.expense);
@@ -435,6 +448,8 @@ function renderSummary() {
       ? "Adicione receitas e despesas para medir o mes."
       : !totals.income
         ? "Ja da para ler o mes, mas registrar receitas deixa a saude financeira mais precisa."
+        : free < 0
+          ? `Mes no vermelho: os gastos passaram a receita em ${money(Math.abs(free))}.`
         : health >= 70
           ? "Bom equilibrio entre gastos, reserva e investimentos."
           : "Revise os maiores gastos e proteja o saldo livre.";
