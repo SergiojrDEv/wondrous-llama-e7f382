@@ -440,19 +440,19 @@ function renderSummary() {
   document.querySelector("#free-balance").textContent = money(free);
   document.querySelector("#income-count").textContent = `${transactions.filter((item) => item.type === "income").length} lancamentos`;
   document.querySelector("#expense-count").textContent = `${expenseCategories.size} categorias`;
-  document.querySelector("#invest-rate").textContent = `${investRate.toFixed(1)}% da receita`;
-  document.querySelector("#commitment-rate").textContent = `${commitment.toFixed(1)}% comprometido`;
+  document.querySelector("#invest-rate").textContent = `${investRate.toFixed(1)}% da receita direcionado para investimento`;
+  document.querySelector("#commitment-rate").textContent = `${commitment.toFixed(1)}% da receita ja foi comprometida`;
   document.querySelector("#health-score").textContent = `${Math.round(health)}%`;
   document.querySelector("#health-copy").textContent =
     !hasTransactions
-      ? "Adicione receitas e despesas para medir o mes."
+      ? "Adicione receitas, despesas e investimentos para medir o saldo disponivel do mes."
       : !totals.income
-        ? "Ja da para ler o mes, mas registrar receitas deixa a saude financeira mais precisa."
+        ? "Ja da para ler os movimentos do mes, mas registrar receitas deixa o saldo disponivel mais preciso."
         : free < 0
-          ? `Mes no vermelho: os gastos passaram a receita em ${money(Math.abs(free))}.`
+          ? `Mes no vermelho: depois de despesas e investimentos, faltam ${money(Math.abs(free))} para o disponivel imediato fechar positivo.`
         : health >= 70
-          ? "Bom equilibrio entre gastos, reserva e investimentos."
-          : "Revise os maiores gastos e proteja o saldo livre.";
+          ? "Bom equilibrio entre gastos, reserva e disponivel para movimentacao."
+          : "Revise os maiores gastos e proteja o valor ainda disponivel para movimentacao.";
   renderSmartDashboard(transactions, totals, free);
 }
 
@@ -476,17 +476,17 @@ function renderSmartDashboard(transactions, totals, free) {
     : "Sem historico";
 
   let title = "Seu mes esta em construcao";
-  let copy = "Registre receitas, despesas e vencimentos para receber uma leitura mais precisa.";
+  let copy = "Registre receitas, despesas e investimentos para entender o que ainda fica disponivel para movimentacao imediata.";
   if (transactions.length) {
     if (free < 0) {
       title = "Atencao ao saldo do mes";
-      copy = `No ritmo atual, o mes fecha ${money(Math.abs(free))} negativo. Revise gastos pendentes e categorias acima do limite.`;
+      copy = `No ritmo atual, o mes fecha com ${money(Math.abs(free))} a menos no disponivel imediato. Revise gastos pendentes e categorias acima do limite.`;
     } else if (commitment > 80) {
       title = "Mes apertado, mas ainda controlavel";
-      copy = `Voce tem ${money(free)} livre e pode gastar cerca de ${money(dailySafe)} por dia ate o fim do mes.`;
+      copy = `Voce ainda tem ${money(free)} disponivel para movimentacao e pode usar cerca de ${money(dailySafe)} por dia ate o fim do mes.`;
     } else {
       title = "Seu mes esta sob controle";
-      copy = `Voce tem ${money(free)} livre, comprometeu ${commitment.toFixed(1)}% da renda e investiu ${investRate.toFixed(1)}%.`;
+      copy = `Voce tem ${money(free)} disponivel para movimentacao, comprometeu ${commitment.toFixed(1)}% da receita e direcionou ${investRate.toFixed(1)}% para investimento.`;
     }
   }
   document.querySelector("#smart-title").textContent = title;
