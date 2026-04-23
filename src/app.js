@@ -34,6 +34,19 @@ const defaultSettings = {
     ["previdencia", "Previdencia", "#7048e8"],
   ],
   },
+  subcategories: {
+    expense: {
+      alimentacao: [["mercado", "Mercado"], ["restaurante", "Restaurante"]],
+      transporte: [["combustivel", "Combustivel"], ["app-mobilidade", "App e taxi"]],
+    },
+    income: {
+      salario: [["fixo", "Salario fixo"], ["bonus", "Bonus"]],
+    },
+    investment: {
+      "renda-fixa": [["tesouro", "Tesouro"], ["cdb", "CDB"]],
+      acoes: [["dividendos", "Dividendos"], ["buy-hold", "Buy and hold"]],
+    },
+  },
   goals: [
   { name: "Reserva de emergencia", target: 30000, key: "renda-fixa" },
   { name: "Viagem", target: 9000, key: "fundos" },
@@ -139,6 +152,38 @@ function getCategory(type, key) {
   return state.settings.categories[type].find((item) => item[0] === key) || [key, key, "#667085"];
 }
 
+function mergeSubcategories(saved = {}) {
+  const result = { expense: {}, income: {}, investment: {} };
+  ["expense", "income", "investment"].forEach((type) => {
+    const defaults = defaultSettings.subcategories[type] || {};
+    Object.entries(defaults).forEach(([categoryKey, items]) => {
+      result[type][categoryKey] = clone(items);
+    });
+    Object.entries(saved[type] || {}).forEach(([categoryKey, items]) => {
+      if (Array.isArray(items) && items.length) {
+        result[type][categoryKey] = items.map((item) => [item[0], item[1]]);
+      }
+    });
+  });
+  return result;
+}
+
+function getSubcategories(type, categoryKey) {
+  return state.settings.subcategories?.[type]?.[categoryKey] || [];
+}
+
+function getSubcategoryLabel(type, categoryKey, subcategoryKey) {
+  if (!subcategoryKey) return "";
+  const match = getSubcategories(type, categoryKey).find(([key]) => key === subcategoryKey);
+  return match ? match[1] : subcategoryKey;
+}
+
+function categoryDisplayLabel(item) {
+  const [, categoryLabel] = getCategory(item.type, item.category);
+  const subLabel = getSubcategoryLabel(item.type, item.category, item.subcategory);
+  return subLabel ? `${categoryLabel} / ${subLabel}` : categoryLabel;
+}
+
 function paymentMethodLabel(value) {
   const labels = {
     pix: "Pix",
@@ -192,6 +237,7 @@ function mergeSettings(saved = {}) {
       income: saved.categories?.income?.length ? saved.categories.income : clone(defaultSettings.categories.income),
       investment: saved.categories?.investment?.length ? saved.categories.investment : clone(defaultSettings.categories.investment),
     },
+    subcategories: mergeSubcategories(saved.subcategories),
     goals: saved.goals?.length ? saved.goals : clone(defaultSettings.goals),
   };
 }
@@ -220,6 +266,7 @@ function updateCategoryOptions() {
   els.category.innerHTML = state.settings.categories[state.activeType]
     .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`)
     .join("");
+  updateSubcategoryOptions();
 }
 
 function updateAccountOptions() {
@@ -260,6 +307,7 @@ function updateTransactionModalCategories(type = state.transactionModalType) {
   category.innerHTML = state.settings.categories[type]
     .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`)
     .join("");
+  updateTransactionModalSubcategoryOptions();
 }
 
 function updateTransactionModalAccounts() {
@@ -277,6 +325,48 @@ function updateTransactionModalCreditFields() {
   if (!isCredit) {
     document.querySelector("#transaction-modal-credit-card").value = "";
   }
+}
+
+function updateSubcategoryOptions(preferredValue = "") {
+  const field = document.querySelector("#subcategory-field");
+  const select = document.querySelector("#subcategory");
+  if (!field || !select) return;
+  const categoryKey = els.category.value;
+  const items = getSubcategories(state.activeType, categoryKey);
+  if (!items.length) {
+    field.classList.add("is-hidden");
+    field.hidden = true;
+    select.innerHTML = "";
+    select.value = "";
+    return;
+  }
+  field.classList.remove("is-hidden");
+  field.hidden = false;
+  select.innerHTML = `<option value="">Sem subcategoria</option>${items
+    .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`)
+    .join("")}`;
+  select.value = items.some(([value]) => value === preferredValue) ? preferredValue : "";
+}
+
+function updateTransactionModalSubcategoryOptions(preferredValue = "") {
+  const field = document.querySelector("#transaction-modal-subcategory-field");
+  const select = document.querySelector("#transaction-modal-subcategory");
+  const categoryKey = document.querySelector("#transaction-modal-category")?.value;
+  if (!field || !select || !categoryKey) return;
+  const items = getSubcategories(state.transactionModalType, categoryKey);
+  if (!items.length) {
+    field.classList.add("is-hidden");
+    field.hidden = true;
+    select.innerHTML = "";
+    select.value = "";
+    return;
+  }
+  field.classList.remove("is-hidden");
+  field.hidden = false;
+  select.innerHTML = `<option value="">Sem subcategoria</option>${items
+    .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`)
+    .join("")}`;
+  select.value = items.some(([value]) => value === preferredValue) ? preferredValue : "";
 }
 
 function setTransactionModalType(type) {
@@ -490,7 +580,7 @@ function renderTable() {
   const filtered = monthTransactions
     .filter((item) => state.typeFilter === "all" || item.type === state.typeFilter)
     .filter((item) => {
-      const haystack = `${item.description} ${item.category} ${item.account} ${item.paymentMethod || ""}`.toLowerCase();
+      const haystack = `${item.description} ${item.category} ${item.subcategory || ""} ${item.account} ${item.paymentMethod || ""}`.toLowerCase();
       return haystack.includes(state.search.toLowerCase());
     })
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -502,7 +592,6 @@ function renderTable() {
 
   els.table.innerHTML = filtered
     .map((item) => {
-      const [, label] = getCategory(item.type, item.category);
       const amountClass = item.type === "income" ? "positive" : item.type === "investment" ? "purple" : "negative";
       const sign = item.type === "income" ? "+" : "-";
       const typeLabel = item.type === "income" ? "Receita" : item.type === "investment" ? "Investimento" : "Despesa";
@@ -512,7 +601,7 @@ function renderTable() {
         <tr>
           <td>${parseLocalDate(item.date).toLocaleDateString("pt-BR")}</td>
           <td><strong>${esc(item.description)}</strong></td>
-          <td><span class="category-pill">${esc(label)}</span></td>
+          <td><span class="category-pill">${esc(categoryDisplayLabel(item))}</span></td>
           <td>${esc(item.account)}</td>
           <td><span class="type-pill ${item.status || "paid"}">${statusLabel}</span></td>
           <td><span class="payment-pill ${item.paymentMethod || "pix"}">${paymentMethodLabel(item.paymentMethod)}</span></td>
@@ -691,7 +780,9 @@ function renderSettings() {
   renderAccountManager();
   renderCardManager();
   renderGoalManager();
+  renderSubcategoryManager();
   renderGoalCategoryOptions();
+  renderSubcategoryParentOptions();
   updateTransactionModalAccounts();
   updateCreditCardOptions();
 }
@@ -708,7 +799,7 @@ function renderCategoryManager() {
       <div class="manage-item">
         <div>
           <strong><span class="color-dot" style="--color:${esc(item.color)}"></span>${esc(item.label)}</strong>
-          <small>${labels[item.type]}${item.type === "expense" ? ` | limite ${money(Number(item.limit || 0))}` : ""}</small>
+          <small>${labels[item.type]}${item.type === "expense" ? ` | limite ${money(Number(item.limit || 0))}` : ""}${getSubcategories(item.type, item.key).length ? ` | ${getSubcategories(item.type, item.key).length} subcategoria${getSubcategories(item.type, item.key).length === 1 ? "" : "s"}` : ""}</small>
         </div>
         <div class="mini-actions">
           ${item.type === "expense" ? `<button class="mini-btn" type="button" data-edit-limit="${item.key}">Limite</button>` : ""}
@@ -807,6 +898,44 @@ function renderGoalCategoryOptions() {
   });
 }
 
+function renderSubcategoryParentOptions() {
+  const type = document.querySelector("#new-subcategory-type")?.value || "expense";
+  const select = document.querySelector("#new-subcategory-category");
+  if (!select) return;
+  select.innerHTML = state.settings.categories[type]
+    .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`)
+    .join("");
+}
+
+function renderSubcategoryManager() {
+  const target = document.querySelector("#subcategory-manage-list");
+  if (!target) return;
+  const rows = Object.entries(state.settings.subcategories || {}).flatMap(([type, categories]) =>
+    Object.entries(categories || {}).flatMap(([categoryKey, items]) =>
+      (items || []).map(([subKey, subLabel]) => ({ type, categoryKey, subKey, subLabel }))
+    )
+  );
+
+  if (!rows.length) {
+    target.innerHTML = '<div class="empty-state">Nenhuma subcategoria cadastrada.</div>';
+    return;
+  }
+
+  target.innerHTML = rows.map((item) => {
+    const [, categoryLabel] = getCategory(item.type, item.categoryKey);
+    const typeLabel = item.type === "expense" ? "Despesa" : item.type === "income" ? "Receita" : "Investimento";
+    return `
+      <div class="manage-item">
+        <div>
+          <strong>${esc(item.subLabel)}</strong>
+          <small>${typeLabel} | ${esc(categoryLabel)}</small>
+        </div>
+        <button class="mini-btn danger" type="button" data-remove-subcategory="${item.type}:${item.categoryKey}:${item.subKey}">Remover</button>
+      </div>
+    `;
+  }).join("");
+}
+
 function renderChart() {
   const canvas = document.querySelector("#cashflow-chart");
   if (!canvas || !window.Chart) {
@@ -882,6 +1011,7 @@ function addTransaction(event) {
   const groupId = totalItems > 1 ? createId() : null;
   const baseAmount = Number(formData.get("amount"));
   const perItemAmount = installments > 1 ? Number((baseAmount / installments).toFixed(2)) : baseAmount;
+  const subcategory = formData.get("subcategory") || null;
   const transactions = Array.from({ length: totalItems }, (_, index) => {
     const date = addMonths(formData.get("date"), index);
     const dueDate = formData.get("dueDate") ? addMonths(formData.get("dueDate"), index) : date;
@@ -891,6 +1021,7 @@ function addTransaction(event) {
       type: state.activeType,
       description: `${formData.get("description").trim()}${suffix}`,
       category: formData.get("category"),
+      subcategory,
       account: formData.get("account"),
       amount: perItemAmount,
       date,
@@ -922,6 +1053,7 @@ function updateTransaction(formData) {
   item.type = state.activeType;
   item.description = formData.get("description").trim();
   item.category = formData.get("category");
+  item.subcategory = formData.get("subcategory") || null;
   item.account = formData.get("account");
   item.amount = Number(formData.get("amount"));
   item.date = formData.get("date");
@@ -950,6 +1082,7 @@ function editTransaction(id) {
   updateCreditCardOptions();
   document.querySelector("#transaction-modal-description").value = item.description;
   document.querySelector("#transaction-modal-category").value = item.category;
+  updateTransactionModalSubcategoryOptions(item.subcategory || "");
   document.querySelector("#transaction-modal-account").value = item.account;
   document.querySelector("#transaction-modal-amount").value = item.amount;
   document.querySelector("#transaction-modal-date").value = item.date;
@@ -976,6 +1109,7 @@ function resetTransactionForm() {
   document.querySelector("#transaction-submit").textContent = "Salvar lancamento";
   document.querySelector("#cancel-edit").classList.add("is-hidden");
   updateCreditPaymentFields();
+  updateSubcategoryOptions();
 }
 
 function closeTransactionModal() {
@@ -993,6 +1127,7 @@ function saveTransactionFromModal(event) {
   item.type = state.transactionModalType;
   item.description = document.querySelector("#transaction-modal-description").value.trim();
   item.category = document.querySelector("#transaction-modal-category").value;
+  item.subcategory = document.querySelector("#transaction-modal-subcategory").value || null;
   item.account = document.querySelector("#transaction-modal-account").value;
   item.amount = Number(document.querySelector("#transaction-modal-amount").value);
   item.date = document.querySelector("#transaction-modal-date").value;
@@ -1107,6 +1242,7 @@ function normalizeImportedTransaction(row, settings) {
       ? "investment"
       : "expense";
   const category = ensureImportedCategory(settings, type, getImportedField(row, "category"));
+  const subcategory = row.subcategory || row.subcat || null;
   const paymentMethod = normalizePaymentMethod(getImportedField(row, "payment"));
   const isCredit = paymentMethod === "credit";
 
@@ -1115,6 +1251,7 @@ function normalizeImportedTransaction(row, settings) {
     type,
     description,
     category,
+    subcategory,
     account: row.account || "Conta corrente",
     amount,
     date,
@@ -1252,6 +1389,29 @@ function addCreditCard(event) {
   notify("Cartao criado.");
 }
 
+function addSubcategory(event) {
+  event.preventDefault();
+  const type = document.querySelector("#new-subcategory-type").value;
+  const categoryKey = document.querySelector("#new-subcategory-category").value;
+  const name = document.querySelector("#new-subcategory-name").value.trim();
+  if (!name || !categoryKey) return notify("Preencha a subcategoria corretamente.");
+
+  const key = slugify(name);
+  state.settings.subcategories[type] ||= {};
+  state.settings.subcategories[type][categoryKey] ||= [];
+  if (state.settings.subcategories[type][categoryKey].some(([itemKey]) => itemKey === key)) {
+    return notify("Esta subcategoria ja existe nessa categoria.");
+  }
+
+  state.settings.subcategories[type][categoryKey].push([key, name]);
+  event.currentTarget.reset();
+  document.querySelector("#new-subcategory-type").value = type;
+  renderSubcategoryParentOptions();
+  persist();
+  renderAll();
+  notify("Subcategoria criada.");
+}
+
 function addGoal(event) {
   event.preventDefault();
   const name = document.querySelector("#new-goal-name").value.trim();
@@ -1294,11 +1454,25 @@ function removeCategory(type, key) {
   const inUse = state.transactions.some((item) => item.type === type && item.category === key);
   if (inUse) return notify("Categoria em uso. Remova ou altere os lancamentos primeiro.");
   state.settings.categories[type] = state.settings.categories[type].filter(([itemKey]) => itemKey !== key);
+  if (state.settings.subcategories?.[type]?.[key]) delete state.settings.subcategories[type][key];
   state.settings.goals = state.settings.goals.filter((goal) => goal.key !== key);
   persist();
   updateCategoryOptions();
   renderAll();
   notify("Categoria removida.");
+}
+
+function removeSubcategory(type, categoryKey, subKey) {
+  const inUse = state.transactions.some((item) => item.type === type && item.category === categoryKey && item.subcategory === subKey);
+  if (inUse) return notify("Subcategoria em uso. Ajuste os lancamentos primeiro.");
+  state.settings.subcategories[type][categoryKey] = (state.settings.subcategories[type][categoryKey] || [])
+    .filter(([itemKey]) => itemKey !== subKey);
+  if (!state.settings.subcategories[type][categoryKey].length) {
+    delete state.settings.subcategories[type][categoryKey];
+  }
+  persist();
+  renderAll();
+  notify("Subcategoria removida.");
 }
 
 function removeAccount(index) {
@@ -1710,6 +1884,7 @@ function toRemoteTransaction(item) {
     date: item.date,
     descricao: item.description,
     cat: item.category,
+    subcat: item.subcategory || null,
     type: item.type,
     val: Number(item.amount),
     account: item.account || "Conta corrente",
@@ -1733,6 +1908,7 @@ function fromRemoteTransaction(row) {
     type: row.type,
     description: row.description || row.descricao || "",
     category: row.category || row.cat || "outros",
+    subcategory: row.subcategory || row.subcat || null,
     account: row.account || "Conta corrente",
     amount: Number(row.amount ?? row.val ?? 0),
     date: normalizeRemoteDate(row.date, row.year, row.month),
@@ -1854,14 +2030,16 @@ function download(filename, content, type) {
 }
 
 function exportCsv() {
-  const rows = [["Data", "Vencimento", "Descricao", "Categoria", "Conta", "Status", "Pagamento", "Tipo", "Valor"]];
+  const rows = [["Data", "Vencimento", "Descricao", "Categoria", "Subcategoria", "Conta", "Status", "Pagamento", "Tipo", "Valor"]];
   getMonthTransactions().forEach((item) => {
     const [, categoryLabel] = getCategory(item.type, item.category);
+    const subcategoryLabel = getSubcategoryLabel(item.type, item.category, item.subcategory);
     rows.push([
       item.date,
       item.dueDate || item.date,
       item.description,
       categoryLabel,
+      subcategoryLabel,
       item.account,
       item.status || "paid",
       item.paymentMethod || "pix",
@@ -1900,6 +2078,7 @@ function seedData() {
     type,
     description,
     category,
+    subcategory: description === "Supermercado" ? "mercado" : description === "Uber e metro" ? "app-mobilidade" : type === "income" && category === "salario" ? "fixo" : type === "investment" && category === "renda-fixa" ? "tesouro" : null,
     account,
     amount,
     date: new Date(current.getFullYear(), current.getMonth(), day).toISOString().slice(0, 10),
@@ -1945,6 +2124,7 @@ function bindEvents() {
   document.querySelector("#category-form").addEventListener("submit", addCategory);
   document.querySelector("#account-form").addEventListener("submit", addAccount);
   document.querySelector("#card-form").addEventListener("submit", addCreditCard);
+  document.querySelector("#subcategory-form").addEventListener("submit", addSubcategory);
   document.querySelector("#goal-form").addEventListener("submit", addGoal);
   document.querySelector("#login-form").addEventListener("submit", signInSupabase);
   document.querySelector("#login-reset").addEventListener("click", () => {
@@ -1980,6 +2160,7 @@ function bindEvents() {
     button.addEventListener("click", () => setTransactionModalType(button.dataset.modalType));
   });
   document.querySelector("#transaction-modal-payment-method").addEventListener("change", updateTransactionModalCreditFields);
+  document.querySelector("#transaction-modal-category").addEventListener("change", () => updateTransactionModalSubcategoryOptions());
   document.querySelector("#signup-cpf").addEventListener("input", (event) => {
     event.target.value = formatCpf(event.target.value);
   });
@@ -1987,6 +2168,8 @@ function bindEvents() {
     event.target.value = formatPhone(event.target.value);
   });
   document.querySelector("#payment-method").addEventListener("change", updateCreditPaymentFields);
+  document.querySelector("#category").addEventListener("change", () => updateSubcategoryOptions());
+  document.querySelector("#new-subcategory-type").addEventListener("change", renderSubcategoryParentOptions);
   document.querySelector("#logout-btn").addEventListener("click", signOutSupabase);
   document.querySelector("#cancel-edit").addEventListener("click", resetTransactionForm);
   els.search.addEventListener("input", (event) => {
@@ -2068,6 +2251,12 @@ function bindEvents() {
       renderAll();
       notify("Meta removida.");
     }
+  });
+  document.querySelector("#subcategory-manage-list").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-remove-subcategory]");
+    if (!button) return;
+    const [type, categoryKey, subKey] = button.dataset.removeSubcategory.split(":");
+    removeSubcategory(type, categoryKey, subKey);
   });
   document.querySelector("#goals-list").addEventListener("click", (event) => {
     const contributeButton = event.target.closest("[data-goal-contribute]");

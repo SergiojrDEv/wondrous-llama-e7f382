@@ -253,10 +253,14 @@
             <input id="description" name="description" type="text" placeholder="Ex: supermercado, salario, Tesouro Direto" required>
           </label>
 
-          <div class="field-row">
+          <div class="field-row field-row-3">
             <label>
               Categoria
               <select id="category" name="category" required></select>
+            </label>
+            <label id="subcategory-field" class="is-hidden" hidden>
+              Subcategoria
+              <select id="subcategory" name="subcategory"></select>
             </label>
             <label>
               Conta
@@ -525,6 +529,34 @@
           <button class="primary-btn full" type="submit">Adicionar cartao</button>
         </form>
 
+        <form class="panel settings-panel" id="subcategory-form">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Subcategorias</p>
+              <h2>Criar nova subcategoria</h2>
+            </div>
+          </div>
+          <div class="field-row">
+            <label>
+              Tipo
+              <select id="new-subcategory-type" required>
+                <option value="expense">Despesa</option>
+                <option value="income">Receita</option>
+                <option value="investment">Investimento</option>
+              </select>
+            </label>
+            <label>
+              Categoria principal
+              <select id="new-subcategory-category" required></select>
+            </label>
+          </div>
+          <label>
+            Nome da subcategoria
+            <input id="new-subcategory-name" type="text" placeholder="Ex: Mercado, Bonus anual, ETF" required>
+          </label>
+          <button class="primary-btn full" type="submit">Adicionar subcategoria</button>
+        </form>
+
       </div>
 
       <div class="settings-lists">
@@ -563,6 +595,15 @@
             </div>
           </div>
           <div class="manage-list" id="goal-manage-list"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Gerenciar</p>
+              <h2>Subcategorias</h2>
+            </div>
+          </div>
+          <div class="manage-list" id="subcategory-manage-list"></div>
         </article>
       </div>
     </section>
@@ -623,10 +664,14 @@
           <input id="transaction-modal-description" name="description" type="text" required>
         </label>
 
-        <div class="field-row">
+        <div class="field-row field-row-3">
           <label>
             Categoria
             <select id="transaction-modal-category" name="category" required></select>
+          </label>
+          <label id="transaction-modal-subcategory-field" class="is-hidden" hidden>
+            Subcategoria
+            <select id="transaction-modal-subcategory" name="subcategory"></select>
           </label>
           <label>
             Conta

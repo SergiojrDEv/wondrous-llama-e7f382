@@ -7,6 +7,7 @@ create table if not exists public.transactions (
   date text,
   descricao text,
   cat text,
+  subcat text,
   type text,
   val numeric,
   year int,
@@ -22,6 +23,9 @@ create table if not exists public.transactions (
   installment_total int,
   created_at timestamptz default now()
 );
+
+alter table public.transactions
+  add column if not exists subcat text;
 
 alter table public.transactions
   add column if not exists account text default 'Conta corrente';

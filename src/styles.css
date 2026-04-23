@@ -603,6 +603,10 @@ select:focus {
   gap: 12px;
 }
 
+.field-row-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .form-actions {
   display: grid;
   gap: 10px;
