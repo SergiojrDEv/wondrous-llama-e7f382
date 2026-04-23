@@ -178,59 +178,61 @@
         </article>
       </div>
 
-      <div class="smart-grid">
-        <article class="panel smart-panel">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">Resumo inteligente</p>
-              <h2 id="smart-title">Seu mes em uma frase</h2>
+      <div class="overview-shell">
+        <div class="overview-main">
+          <article class="panel smart-panel">
+            <div class="panel-header compact-header">
+              <div>
+                <p class="eyebrow">Resumo inteligente</p>
+                <h2 id="smart-title">Seu mes em uma frase</h2>
+              </div>
             </div>
-          </div>
-          <p class="smart-copy" id="smart-copy">Adicione lancamentos para receber uma leitura do mes.</p>
-          <div class="smart-metrics">
-            <div>
-              <span>Gasto diario seguro</span>
-              <strong id="daily-safe">R$ 0,00</strong>
+            <p class="smart-copy" id="smart-copy">Adicione lancamentos para receber uma leitura do mes.</p>
+            <div class="smart-metrics">
+              <div>
+                <span>Gasto diario seguro</span>
+                <strong id="daily-safe">R$ 0,00</strong>
+              </div>
+              <div>
+                <span>Comparativo</span>
+                <strong id="month-comparison">Sem historico</strong>
+              </div>
             </div>
-            <div>
-              <span>Comparativo</span>
-              <strong id="month-comparison">Sem historico</strong>
-            </div>
-          </div>
-        </article>
+          </article>
 
-        <article class="panel">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">Proximos passos</p>
-              <h2>Alertas e vencimentos</h2>
+          <article class="panel chart-panel">
+            <div class="panel-header compact-header">
+              <div>
+                <p class="eyebrow">Fluxo</p>
+                <h2>Ultimos 6 meses</h2>
+              </div>
+              <span class="status-pill" id="trend-status">Sem dados</span>
             </div>
-          </div>
-          <div class="insight-list" id="insight-list"></div>
-        </article>
-      </div>
+            <canvas id="cashflow-chart" height="120" aria-label="Grafico de fluxo financeiro"></canvas>
+          </article>
+        </div>
 
-      <div class="dashboard-grid">
-        <article class="panel chart-panel">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">Fluxo</p>
-              <h2>Ultimos 6 meses</h2>
+        <aside class="overview-rail">
+          <article class="panel compact-panel">
+            <div class="panel-header compact-header">
+              <div>
+                <p class="eyebrow">Proximos passos</p>
+                <h2>Alertas e vencimentos</h2>
+              </div>
             </div>
-            <span class="status-pill" id="trend-status">Sem dados</span>
-          </div>
-          <canvas id="cashflow-chart" height="120" aria-label="Grafico de fluxo financeiro"></canvas>
-        </article>
+            <div class="insight-list" id="insight-list"></div>
+          </article>
 
-        <article class="panel">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">Categorias</p>
-              <h2>Maiores despesas</h2>
+          <article class="panel compact-panel">
+            <div class="panel-header compact-header">
+              <div>
+                <p class="eyebrow">Categorias</p>
+                <h2>Maiores despesas</h2>
+              </div>
             </div>
-          </div>
-          <div class="stack-list" id="category-breakdown"></div>
-        </article>
+            <div class="stack-list" id="category-breakdown"></div>
+          </article>
+        </aside>
       </div>
     </section>
 

@@ -333,7 +333,7 @@ h2 {
 .metric-card {
   position: relative;
   overflow: hidden;
-  padding: 18px;
+  padding: 16px 16px 15px;
 }
 
 .metric-card::before {
@@ -363,13 +363,19 @@ h2 {
 
 .metric-card strong {
   display: block;
-  margin: 10px 0 4px;
-  font-size: clamp(1.3rem, 2vw, 1.85rem);
+  margin: 8px 0 3px;
+  font-size: clamp(1.2rem, 1.8vw, 1.72rem);
 }
 
-.dashboard-grid {
+.overview-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.8fr);
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.7fr);
+  gap: 18px;
+}
+
+.overview-main,
+.overview-rail {
+  display: grid;
   gap: 18px;
 }
 
@@ -381,16 +387,16 @@ h2 {
 }
 
 .smart-copy {
-  margin: 0 0 18px;
+  margin: 0 0 14px;
   color: var(--text);
-  font-size: 1.05rem;
-  line-height: 1.55;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 .smart-metrics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .smart-metrics div,
@@ -419,12 +425,24 @@ h2 {
 
 .insight-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .insight-item strong {
   display: block;
   margin-top: 4px;
+}
+
+.compact-panel {
+  padding: 16px;
+}
+
+.compact-header {
+  margin-bottom: 14px;
+}
+
+.compact-header h2 {
+  font-size: 1rem;
 }
 
 .workspace-grid {
@@ -521,7 +539,7 @@ h2 {
 
 .stack-list {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .category-row {
@@ -532,7 +550,7 @@ h2 {
 }
 
 .category-row strong {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
 .bar {
@@ -1356,6 +1374,7 @@ td {
   }
 
   .dashboard-grid,
+  .overview-shell,
   .smart-grid,
   .workspace-grid,
   .metas-shell {
