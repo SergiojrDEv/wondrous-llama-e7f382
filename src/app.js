@@ -1074,30 +1074,64 @@ function renderSubcategoryParentOptions() {
 function renderSubcategoryManager() {
   const target = document.querySelector("#subcategory-manage-list");
   if (!target) return;
-  const rows = Object.entries(state.settings.subcategories || {}).flatMap(([type, categories]) =>
-    Object.entries(categories || {}).flatMap(([categoryKey, items]) =>
-      (items || []).map(([subKey, subLabel]) => ({ type, categoryKey, subKey, subLabel }))
-    )
+  const typeLabels = { expense: "Despesa", income: "Receita", investment: "Investimento" };
+  const groups = Object.entries(state.settings.categories).flatMap(([type, categories]) =>
+    categories.map(([categoryKey, categoryLabel]) => ({
+      type,
+      categoryKey,
+      categoryLabel,
+      tags: getSubcategories(type, categoryKey),
+    }))
   );
 
-  if (!rows.length) {
-    target.innerHTML = '<div class="empty-state">Nenhuma subcategoria cadastrada.</div>';
-    return;
+  target.innerHTML = groups.map((group) => `
+    <article class="tag-plan-card">
+      <header class="tag-plan-header">
+        <div>
+          <strong>${esc(group.categoryLabel)}</strong>
+          <small>${typeLabels[group.type]}${group.tags.length ? ` | ${group.tags.length} etiqueta${group.tags.length === 1 ? "" : "s"}` : " | sem etiquetas"}</small>
+        </div>
+      </header>
+      <div class="tag-chip-wrap">
+        ${group.tags.length ? group.tags.map(([subKey, subLabel]) => `
+          <button
+            class="tag-chip"
+            type="button"
+            data-remove-subcategory="${group.type}:${group.categoryKey}:${subKey}"
+            title="Remover etiqueta"
+          >
+            <span>${esc(subLabel)}</span>
+            <span class="tag-chip-close">x</span>
+          </button>
+        `).join("") : '<span class="tag-chip tag-chip-empty">Nenhuma etiqueta ainda</span>'}
+      </div>
+      <form class="tag-inline-form" data-subcategory-inline="${group.type}:${group.categoryKey}">
+        <input
+          type="text"
+          name="name"
+          placeholder="Adicionar etiqueta"
+          aria-label="Adicionar etiqueta em ${esc(group.categoryLabel)}"
+        >
+        <button class="mini-btn" type="submit">Adicionar</button>
+      </form>
+    </article>
+  `).join("");
+}
+
+function addInlineSubcategory(type, categoryKey, name) {
+  const normalized = name.trim();
+  if (!normalized) return notify("Informe um nome para a etiqueta.");
+  const key = slugify(normalized);
+  state.settings.subcategories[type] ||= {};
+  state.settings.subcategories[type][categoryKey] ||= [];
+  if (state.settings.subcategories[type][categoryKey].some(([itemKey]) => itemKey === key)) {
+    return notify("Esta etiqueta ja existe nessa categoria.");
   }
 
-  target.innerHTML = rows.map((item) => {
-    const [, categoryLabel] = getCategory(item.type, item.categoryKey);
-    const typeLabel = item.type === "expense" ? "Despesa" : item.type === "income" ? "Receita" : "Investimento";
-    return `
-      <div class="manage-item">
-        <div>
-          <strong>${esc(item.subLabel)}</strong>
-          <small>${typeLabel} | ${esc(categoryLabel)}</small>
-        </div>
-        <button class="mini-btn danger" type="button" data-remove-subcategory="${item.type}:${item.categoryKey}:${item.subKey}">Remover</button>
-      </div>
-    `;
-  }).join("");
+  state.settings.subcategories[type][categoryKey].push([key, normalized]);
+  persist();
+  renderAll();
+  notify("Etiqueta adicionada.");
 }
 
 function renderChart() {
@@ -2458,6 +2492,14 @@ function bindEvents() {
     if (!button) return;
     const [type, categoryKey, subKey] = button.dataset.removeSubcategory.split(":");
     removeSubcategory(type, categoryKey, subKey);
+  });
+  document.querySelector("#subcategory-manage-list").addEventListener("submit", (event) => {
+    const form = event.target.closest("[data-subcategory-inline]");
+    if (!form) return;
+    event.preventDefault();
+    const [type, categoryKey] = form.dataset.subcategoryInline.split(":");
+    const name = new FormData(form).get("name");
+    addInlineSubcategory(type, categoryKey, String(name || ""));
   });
   document.querySelector("#goals-list").addEventListener("click", (event) => {
     const contributeButton = event.target.closest("[data-goal-contribute]");
