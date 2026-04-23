@@ -525,6 +525,7 @@ function renderSummary() {
   const transactions = getMonthTransactions();
   const totals = summarize(transactions);
   const free = totals.income - totals.expense - totals.investment;
+  const committed = totals.expense + totals.investment;
   const expenseCategories = new Set(
     transactions.filter((item) => item.type === "expense").map((item) => item.category)
   );
@@ -553,7 +554,7 @@ function renderSummary() {
   document.querySelector("#income-total").textContent = money(totals.income);
   document.querySelector("#expense-total").textContent = money(totals.expense);
   document.querySelector("#invest-total").textContent = money(totals.investment);
-  document.querySelector("#free-balance").textContent = money(free);
+  document.querySelector("#committed-total").textContent = money(committed);
   document.querySelector("#overview-free-balance").textContent = money(free);
   document.querySelector("#income-count").textContent = `${transactions.filter((item) => item.type === "income").length} lancamentos`;
   document.querySelector("#expense-count").textContent = `${expenseCategories.size} categorias`;
