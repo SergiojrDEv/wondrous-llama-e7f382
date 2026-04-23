@@ -153,11 +153,24 @@
     </header>
 
     <section class="section active" id="visao-geral">
+      <article class="panel overview-hero">
+        <div>
+          <p class="eyebrow">Hoje ate o fim do mes</p>
+          <h2 id="overview-greeting">Ola</h2>
+          <p class="overview-subtitle" id="overview-period-copy">Acompanhe o que entra, sai e sobra no periodo atual.</p>
+        </div>
+        <div class="overview-hero-side">
+          <span class="overview-hero-label">Disponibilidade financeira</span>
+          <strong id="overview-free-balance">R$ 0,00</strong>
+          <small id="overview-free-caption">Saldo disponivel para movimentacao imediata</small>
+        </div>
+      </article>
+
       <div class="summary-grid" aria-label="Resumo do mes">
-        <article class="metric-card income">
-          <span>Receitas</span>
-          <strong id="income-total">R$ 0,00</strong>
-          <small id="income-count">0 lancamentos</small>
+        <article class="metric-card balance featured">
+          <span>Disponivel agora</span>
+          <strong id="free-balance">R$ 0,00</strong>
+          <small id="commitment-rate">0% da receita ja foi comprometida</small>
         </article>
         <article class="metric-card expense">
           <span>Despesas</span>
@@ -169,10 +182,10 @@
           <strong id="invest-total">R$ 0,00</strong>
           <small id="invest-rate">0% da receita direcionado para investimento</small>
         </article>
-        <article class="metric-card balance">
-          <span>Disponivel para movimentacao</span>
-          <strong id="free-balance">R$ 0,00</strong>
-          <small id="commitment-rate">0% da receita ja foi comprometida</small>
+        <article class="metric-card income">
+          <span>Receitas</span>
+          <strong id="income-total">R$ 0,00</strong>
+          <small id="income-count">0 lancamentos</small>
         </article>
       </div>
 
@@ -225,10 +238,10 @@
             <div class="panel-header compact-header">
               <div>
                 <p class="eyebrow">Categorias</p>
-                <h2>Maiores despesas</h2>
+                <h2>Onde o mes pesa mais</h2>
               </div>
             </div>
-            <div class="stack-list" id="category-breakdown"></div>
+            <div class="category-card-grid" id="category-breakdown"></div>
           </article>
         </aside>
       </div>

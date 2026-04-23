@@ -554,10 +554,15 @@ function renderSummary() {
   document.querySelector("#expense-total").textContent = money(totals.expense);
   document.querySelector("#invest-total").textContent = money(totals.investment);
   document.querySelector("#free-balance").textContent = money(free);
+  document.querySelector("#overview-free-balance").textContent = money(free);
   document.querySelector("#income-count").textContent = `${transactions.filter((item) => item.type === "income").length} lancamentos`;
   document.querySelector("#expense-count").textContent = `${expenseCategories.size} categorias`;
   document.querySelector("#invest-rate").textContent = `${investRate.toFixed(1)}% da receita direcionado para investimento`;
   document.querySelector("#commitment-rate").textContent = `${commitment.toFixed(1)}% da receita ja foi comprometida`;
+  document.querySelector("#overview-free-caption").textContent =
+    free >= 0
+      ? "Saldo disponivel para movimentacao imediata"
+      : `Faltam ${money(Math.abs(free))} para voltar ao positivo`;
   document.querySelector("#health-score").textContent = `${Math.round(health)}%`;
   document.querySelector("#health-copy").textContent =
     !hasTransactions
@@ -570,6 +575,24 @@ function renderSummary() {
           ? "Bom equilibrio entre gastos, reserva e disponivel para movimentacao."
           : "Revise os maiores gastos e proteja o valor ainda disponivel para movimentacao.";
   renderSmartDashboard(transactions, totals, free);
+}
+
+function getDisplayName() {
+  const name = state.currentUser?.user_metadata?.full_name?.trim();
+  if (name) return name;
+  const email = state.currentUser?.email || "";
+  return email ? email.split("@")[0] : "Finance Flow";
+}
+
+function renderOverviewContext() {
+  const monthStart = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth(), 1);
+  const monthEnd = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth() + 1, 0);
+  const today = new Date();
+  const rangeStart = monthKey(today) === monthKey(state.currentDate) ? today : monthStart;
+  const startText = rangeStart.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
+  const endText = monthEnd.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
+  document.querySelector("#overview-greeting").textContent = `Ola, ${getDisplayName()}`;
+  document.querySelector("#overview-period-copy").textContent = `${startText} ate ${endText}`;
 }
 
 function renderSmartDashboard(transactions, totals, free) {
@@ -660,12 +683,12 @@ function renderInsights(transactions, totals) {
 
 function renderCategoryBreakdown() {
   const expenses = getMonthTransactions().filter((item) => item.type === "expense");
+  const totalExpense = expenses.reduce((sum, item) => sum + Number(item.amount), 0);
   const totals = expenses.reduce((acc, item) => {
     acc[item.category] = (acc[item.category] || 0) + Number(item.amount);
     return acc;
   }, {});
   const rows = Object.entries(totals).sort((a, b) => b[1] - a[1]);
-  const max = Math.max(...rows.map(([, value]) => value), 0);
   const target = document.querySelector("#category-breakdown");
 
   if (!rows.length) {
@@ -674,15 +697,19 @@ function renderCategoryBreakdown() {
   }
 
   target.innerHTML = rows
+    .slice(0, 6)
     .map(([key, value]) => {
       const [, label, color] = getCategory("expense", key);
-      const width = max ? (value / max) * 100 : 0;
+      const percentage = totalExpense ? (value / totalExpense) * 100 : 0;
       return `
-        <div class="category-row">
-          <strong>${esc(label)}</strong>
-          <span class="money negative">${money(value)}</span>
-          <div class="bar"><span style="--value:${width}%;--color:${color}"></span></div>
-        </div>
+        <article class="category-insight-card" style="--card-color:${color}">
+          <div class="category-insight-top">
+            <span class="category-insight-dot"></span>
+            <strong>${esc(label)}</strong>
+            <small>${percentage.toFixed(0)}%</small>
+          </div>
+          <strong class="money negative">${money(value)}</strong>
+        </article>
       `;
     })
     .join("");
@@ -1374,6 +1401,7 @@ function renderChart() {
 }
 
 function renderAll() {
+  renderOverviewContext();
   renderMonthLabel();
   renderSummary();
   renderCategoryBreakdown();

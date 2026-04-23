@@ -321,6 +321,50 @@ h2 {
   margin-bottom: 18px;
 }
 
+.overview-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  gap: 18px;
+  margin-bottom: 18px;
+  padding: 20px;
+  background: linear-gradient(135deg, #18263a 0%, #223958 100%);
+  border-color: rgba(24, 38, 58, 0.2);
+  color: #f8fafc;
+}
+
+.overview-hero .eyebrow {
+  color: #c4d4ea;
+}
+
+.overview-hero h2 {
+  font-size: clamp(1.2rem, 2vw, 1.65rem);
+}
+
+.overview-subtitle {
+  margin: 8px 0 0;
+  color: #c4d4ea;
+  font-weight: 600;
+}
+
+.overview-hero-side {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.overview-hero-label,
+.overview-hero-side small {
+  color: #c4d4ea;
+}
+
+.overview-hero-side strong {
+  font-size: clamp(1.5rem, 2.5vw, 2.2rem);
+}
+
 .metric-card,
 .panel,
 .goal-card {
@@ -334,6 +378,10 @@ h2 {
   position: relative;
   overflow: hidden;
   padding: 16px 16px 15px;
+}
+
+.metric-card.featured {
+  background: linear-gradient(180deg, #fbfcfe 0%, #f3f7fd 100%);
 }
 
 .metric-card::before {
@@ -443,6 +491,46 @@ h2 {
 
 .compact-header h2 {
   font-size: 1rem;
+}
+
+.category-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.category-insight-card {
+  display: grid;
+  gap: 10px;
+  min-height: 116px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--card-color) 10%, white) 0%, #ffffff 100%);
+}
+
+.category-insight-top {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.category-insight-top strong {
+  font-size: 0.9rem;
+}
+
+.category-insight-top small {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.category-insight-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--card-color, var(--balance));
 }
 
 .workspace-grid {
@@ -1359,7 +1447,8 @@ td {
   .overview-shell,
   .smart-grid,
   .workspace-grid,
-  .metas-shell {
+  .metas-shell,
+  .overview-hero {
     grid-template-columns: 1fr;
   }
 
@@ -1465,6 +1554,7 @@ td {
   .auth-field-row,
   .smart-metrics,
   .budget-grid,
+  .category-card-grid,
   .goals-grid,
   .goal-summary-grid,
   .goal-edit-grid,
