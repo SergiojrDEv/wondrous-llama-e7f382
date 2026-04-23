@@ -30,6 +30,10 @@ body {
   font-family: Inter, system-ui, sans-serif;
 }
 
+body.modal-open {
+  overflow: hidden;
+}
+
 body.auth-loading #auth-screen,
 body.auth-loading #app-shell,
 body.auth-loading #sidebar {
@@ -758,11 +762,33 @@ td {
 
 .metas-shell {
   display: grid;
+  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.metas-sidebar {
+  position: sticky;
+  top: 28px;
+}
+
+.metas-content {
+  display: grid;
   gap: 18px;
 }
 
 .goal-create-panel {
-  max-width: 720px;
+  width: 100%;
+}
+
+.goals-summary-panel {
+  padding-bottom: 10px;
+}
+
+.goal-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .budget-card,
@@ -793,6 +819,7 @@ td {
 .goal-card {
   display: grid;
   gap: 12px;
+  min-height: 100%;
 }
 
 .goal-card p {
@@ -804,10 +831,46 @@ td {
   margin-top: -4px;
 }
 
+.goal-card header small {
+  font-size: 1rem;
+}
+
 .goal-card-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(6px);
+}
+
+.modal-card {
+  width: min(100%, 560px);
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 30px 90px rgba(15, 23, 42, 0.25);
+}
+
+.modal-card form {
+  display: grid;
+  gap: 10px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
 }
 
 .report-panel {
@@ -981,12 +1044,21 @@ td {
 
   .dashboard-grid,
   .smart-grid,
-  .workspace-grid {
+  .workspace-grid,
+  .metas-shell {
     grid-template-columns: 1fr;
   }
 
   .transaction-highlights {
     grid-template-columns: 1fr;
+  }
+
+  .goal-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metas-sidebar {
+    position: static;
   }
 }
 
@@ -1021,11 +1093,16 @@ td {
   .smart-metrics,
   .budget-grid,
   .goals-grid,
+  .goal-summary-grid,
   .goal-edit-grid,
   .settings-grid,
   .settings-lists,
   .field-row {
     grid-template-columns: 1fr;
+  }
+
+  .modal-actions {
+    display: grid;
   }
 
   .nav-list {

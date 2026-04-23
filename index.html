@@ -388,31 +388,45 @@
 
     <section class="section" id="metas">
       <div class="metas-shell">
-        <form class="panel goal-create-panel" id="goal-form">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">Metas</p>
-              <h2>Criar nova meta</h2>
+        <aside class="metas-sidebar">
+          <form class="panel goal-create-panel" id="goal-form">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Metas</p>
+                <h2>Criar nova meta</h2>
+              </div>
             </div>
-          </div>
-          <label>
-            Nome
-            <input id="new-goal-name" type="text" placeholder="Ex: Carro, viagem, reserva" required>
-          </label>
-          <div class="field-row">
             <label>
-              Categoria de investimento
-              <select id="new-goal-category" required></select>
+              Nome
+              <input id="new-goal-name" type="text" placeholder="Ex: Carro, viagem, reserva" required>
             </label>
-            <label>
-              Valor alvo
-              <input id="new-goal-target" type="number" min="1" step="0.01" placeholder="0,00" required>
-            </label>
-          </div>
-          <button class="primary-btn full" type="submit">Adicionar meta</button>
-        </form>
+            <div class="field-row">
+              <label>
+                Categoria de investimento
+                <select id="new-goal-category" required></select>
+              </label>
+              <label>
+                Valor alvo
+                <input id="new-goal-target" type="number" min="1" step="0.01" placeholder="0,00" required>
+              </label>
+            </div>
+            <button class="primary-btn full" type="submit">Adicionar meta</button>
+          </form>
+        </aside>
 
-        <div class="goals-grid" id="goals-list"></div>
+        <div class="metas-content">
+          <article class="panel goals-summary-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Resumo</p>
+                <h2>Suas metas em andamento</h2>
+              </div>
+            </div>
+            <div class="goal-summary-grid" id="goals-summary"></div>
+          </article>
+
+          <div class="goals-grid" id="goals-list"></div>
+        </div>
       </div>
     </section>
 
@@ -553,6 +567,39 @@
       </div>
     </section>
   </main>
+
+  <div class="modal-overlay is-hidden" id="goal-modal-overlay">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="goal-modal-title">
+      <form id="goal-modal-form">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Metas</p>
+            <h2 id="goal-modal-title">Editar meta</h2>
+          </div>
+          <button class="icon-btn" id="goal-modal-close" type="button" aria-label="Fechar">×</button>
+        </div>
+
+        <label>
+          Nome
+          <input id="goal-modal-name" type="text" required>
+        </label>
+        <div class="field-row">
+          <label>
+            Categoria de investimento
+            <select id="goal-modal-category" required></select>
+          </label>
+          <label>
+            Valor alvo
+            <input id="goal-modal-target" type="number" min="1" step="0.01" required>
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button class="ghost-btn" id="goal-modal-cancel" type="button">Cancelar</button>
+          <button class="primary-btn" type="submit">Salvar meta</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>

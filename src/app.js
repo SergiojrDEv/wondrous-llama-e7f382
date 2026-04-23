@@ -63,6 +63,7 @@ const state = {
   pendingImport: null,
   authView: "login",
   isPasswordRecovery: false,
+  activeGoalEditIndex: null,
 };
 
 const els = {
@@ -546,6 +547,46 @@ function renderGoals() {
     .join("");
 }
 
+function renderGoalsSummary() {
+  const target = document.querySelector("#goals-summary");
+  if (!target) return;
+
+  const investments = state.transactions.filter((item) => item.type === "investment");
+  const totals = state.settings.goals.map((goal) => {
+    const current = investments
+      .filter((item) => item.category === goal.key)
+      .reduce((sum, item) => sum + Number(item.amount), 0);
+    return { goal, current };
+  });
+
+  const totalTarget = totals.reduce((sum, item) => sum + Number(item.goal.target || 0), 0);
+  const totalCurrent = totals.reduce((sum, item) => sum + Number(item.current || 0), 0);
+  const closest = totals
+    .map((item) => ({
+      ...item,
+      progress: item.goal.target ? (item.current / item.goal.target) * 100 : 0,
+    }))
+    .sort((a, b) => b.progress - a.progress)[0];
+
+  target.innerHTML = `
+    <article class="mini-stat-card">
+      <span>Metas ativas</span>
+      <strong>${state.settings.goals.length}</strong>
+      <small>${money(totalTarget)} planejados</small>
+    </article>
+    <article class="mini-stat-card">
+      <span>Ja acumulado</span>
+      <strong>${money(totalCurrent)}</strong>
+      <small>${totalTarget ? `${((totalCurrent / totalTarget) * 100).toFixed(1)}% do total` : "Comece pela primeira meta"}</small>
+    </article>
+    <article class="mini-stat-card">
+      <span>Mais avancada</span>
+      <strong>${closest ? esc(closest.goal.name) : "Sem metas"}</strong>
+      <small>${closest ? `${Math.min(closest.progress, 100).toFixed(0)}% concluido` : "Crie sua primeira meta"}</small>
+    </article>
+  `;
+}
+
 function openGoalContribution(index) {
   const goal = state.settings.goals[index];
   if (!goal) return;
@@ -567,23 +608,39 @@ function openGoalContribution(index) {
 function editGoalFromCard(index) {
   const goal = state.settings.goals[index];
   if (!goal) return;
+  state.activeGoalEditIndex = index;
+  document.querySelector("#goal-modal-name").value = goal.name;
+  document.querySelector("#goal-modal-category").value = goal.key;
+  document.querySelector("#goal-modal-target").value = Number(goal.target) || 0;
+  document.querySelector("#goal-modal-overlay").classList.remove("is-hidden");
+  document.body.classList.add("modal-open");
+  document.querySelector("#goal-modal-name").focus();
+}
 
-  const nextName = window.prompt("Nome da meta", goal.name);
-  if (nextName === null) return;
+function closeGoalModal() {
+  state.activeGoalEditIndex = null;
+  document.querySelector("#goal-modal-form").reset();
+  document.querySelector("#goal-modal-overlay").classList.add("is-hidden");
+  document.body.classList.remove("modal-open");
+}
 
-  const nextTargetRaw = window.prompt("Valor alvo da meta", String(goal.target));
-  if (nextTargetRaw === null) return;
+function saveGoalFromModal(event) {
+  event.preventDefault();
+  const index = state.activeGoalEditIndex;
+  const goal = state.settings.goals[index];
+  if (!goal) return closeGoalModal();
 
-  const nextTarget = Math.max(0, Number(String(nextTargetRaw).replace(",", ".")) || 0);
-  if (!nextName.trim() || !nextTarget) {
-    notify("Informe um nome e um valor alvo valido.");
-    return;
-  }
+  const name = document.querySelector("#goal-modal-name").value.trim();
+  const key = document.querySelector("#goal-modal-category").value;
+  const target = Number(document.querySelector("#goal-modal-target").value);
+  if (!name || target <= 0) return notify("Preencha a meta corretamente.");
 
-  goal.name = nextName.trim();
-  goal.target = nextTarget;
+  goal.name = name;
+  goal.key = key;
+  goal.target = target;
   persist();
   renderAll();
+  closeGoalModal();
   notify("Meta atualizada.");
 }
 
@@ -693,10 +750,17 @@ function renderGoalManager() {
 }
 
 function renderGoalCategoryOptions() {
-  const select = document.querySelector("#new-goal-category");
-  select.innerHTML = state.settings.categories.investment
+  const options = state.settings.categories.investment
     .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`)
     .join("");
+  const selects = [document.querySelector("#new-goal-category"), document.querySelector("#goal-modal-category")].filter(Boolean);
+  selects.forEach((select) => {
+    const currentValue = select.value;
+    select.innerHTML = options;
+    if (currentValue && [...select.options].some((option) => option.value === currentValue)) {
+      select.value = currentValue;
+    }
+  });
 }
 
 function renderChart() {
@@ -752,6 +816,7 @@ function renderAll() {
   renderTransactionHighlights();
   renderTable();
   renderBudgets();
+  renderGoalsSummary();
   renderGoals();
   renderSettings();
   renderChart();
@@ -1823,6 +1888,12 @@ function bindEvents() {
   });
   document.querySelector("#reset-form").addEventListener("submit", requestPasswordReset);
   document.querySelector("#update-password-form").addEventListener("submit", updatePassword);
+  document.querySelector("#goal-modal-form").addEventListener("submit", saveGoalFromModal);
+  document.querySelector("#goal-modal-close").addEventListener("click", closeGoalModal);
+  document.querySelector("#goal-modal-cancel").addEventListener("click", closeGoalModal);
+  document.querySelector("#goal-modal-overlay").addEventListener("click", (event) => {
+    if (event.target.id === "goal-modal-overlay") closeGoalModal();
+  });
   document.querySelector("#signup-cpf").addEventListener("input", (event) => {
     event.target.value = formatCpf(event.target.value);
   });
