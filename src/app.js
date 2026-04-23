@@ -787,6 +787,105 @@ function slugify(value) {
     .replace(/^-|-$/g, "");
 }
 
+function simplifyFieldName(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function getImportedField(row, kind) {
+  const matchers = {
+    description: (key) => key === "description" || key === "descricao" || key.startsWith("descri"),
+    category: (key) => key === "category" || key === "cat" || key.includes("categoria"),
+    note: (key) => key === "note" || key.includes("observa"),
+    payment: (key) => key === "paymentmethod" || key === "payment" || key.includes("pagamento"),
+    amount: (key) => key === "amount" || key === "val" || key.includes("valor"),
+    date: (key) => key === "date" || key === "data",
+    type: (key) => key === "type" || key === "tipo",
+  };
+  const matcher = matchers[kind];
+  const found = Object.entries(row).find(([key]) => matcher(simplifyFieldName(key)));
+  return found ? found[1] : undefined;
+}
+
+function normalizePaymentMethod(value) {
+  const key = slugify(String(value || "pix"));
+  if (key.includes("credito") || key.includes("credit")) return "credit";
+  if (key.includes("debito") || key.includes("debit")) return "debit";
+  if (key.includes("dinheiro") || key.includes("cash")) return "cash";
+  if (key.includes("transfer")) return "transfer";
+  return "pix";
+}
+
+function normalizeImportedDate(value) {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+  if (typeof value === "string" && value.includes("/")) {
+    const [day, month, year] = value.split("/");
+    if (day && month && year) return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+  return "";
+}
+
+function ensureImportedCategory(type, label) {
+  const name = String(label || "Outros").trim() || "Outros";
+  const key = slugify(name) || "outros";
+  const categories = state.settings.categories[type] || state.settings.categories.expense;
+  if (!categories.some(([itemKey]) => itemKey === key)) {
+    categories.push([key, name, "#667085", type === "expense" ? 0 : undefined]);
+  }
+  return key;
+}
+
+function normalizeImportedTransaction(row) {
+  const description = String(getImportedField(row, "description") || getImportedField(row, "note") || "").trim();
+  const amount = Number(getImportedField(row, "amount"));
+  const date = normalizeImportedDate(getImportedField(row, "date"));
+  if (!description || !Number.isFinite(amount) || amount <= 0 || !date) return null;
+
+  const rawType = slugify(String(getImportedField(row, "type") || ""));
+  const type = rawType.includes("receita") || rawType.includes("income")
+    ? "income"
+    : rawType.includes("invest")
+      ? "investment"
+      : "expense";
+  const category = ensureImportedCategory(type, getImportedField(row, "category"));
+  const paymentMethod = normalizePaymentMethod(getImportedField(row, "payment"));
+  const isCredit = paymentMethod === "credit";
+
+  return {
+    id: row.id || createId(),
+    type,
+    description,
+    category,
+    account: row.account || "Conta corrente",
+    amount,
+    date,
+    dueDate: normalizeImportedDate(row.dueDate || row.due_date) || date,
+    status: row.status || "paid",
+    paymentMethod,
+    creditCardId: isCredit ? row.creditCardId || row.credit_card_id || null : null,
+    recurrence: row.recurrence || "none",
+    recurrenceId: row.recurrenceId || row.recurrence_id || null,
+    installmentGroup: isCredit ? row.installmentGroup || row.installment_group || null : null,
+    installmentNumber: isCredit ? row.installmentNumber || row.installment_number || null : null,
+    installmentTotal: isCredit ? row.installmentTotal || row.installment_total || null : null,
+    createdAt: row.createdAt || row.created_at || new Date().toISOString(),
+  };
+}
+
+function normalizeImportedBackup(imported) {
+  const rows = Array.isArray(imported) ? imported : imported.transactions;
+  if (!Array.isArray(rows)) throw new Error("Formato invalido");
+  const transactions = rows.map(normalizeImportedTransaction).filter(Boolean);
+  if (!transactions.length) throw new Error("Nenhum lancamento valido");
+  return {
+    transactions,
+    settings: imported.settings ? mergeSettings(imported.settings) : state.settings,
+  };
+}
+
 function addCategory(event) {
   event.preventDefault();
   const type = document.querySelector("#new-category-type").value;
@@ -1447,17 +1546,13 @@ function bindEvents() {
     if (!file) return;
     try {
       const imported = JSON.parse(await file.text());
-      if (Array.isArray(imported)) {
-        state.transactions = imported;
-      } else if (Array.isArray(imported.transactions)) {
-        state.transactions = imported.transactions;
-        state.settings = mergeSettings(imported.settings);
-      } else {
-        throw new Error("Formato invalido");
-      }
+      const normalized = normalizeImportedBackup(imported);
+      state.transactions = normalized.transactions;
+      state.settings = normalized.settings;
       persist();
       updateCategoryOptions();
       updateAccountOptions();
+      updateCreditCardOptions();
       renderAll();
       notify("Backup importado.");
     } catch (error) {
