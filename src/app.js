@@ -1978,7 +1978,7 @@ async function initSupabase() {
   state.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
   state.cloudReady = true;
 
-  state.isPasswordRecovery = location.hash.includes("type=recovery") || location.hash.includes("access_token=");
+  state.isPasswordRecovery = isRecoveryFlowFromUrl();
   if (state.isPasswordRecovery) {
     showAuthView("update-password");
     renderAuthGate("Defina sua nova senha para continuar.");
@@ -2084,6 +2084,16 @@ function renderAuthGate(message) {
 
 function isEmailConfirmed(user) {
   return Boolean(user?.email_confirmed_at || user?.confirmed_at);
+}
+
+function readUrlAuthType() {
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const searchParams = new URLSearchParams(window.location.search);
+  return hashParams.get("type") || searchParams.get("type") || "";
+}
+
+function isRecoveryFlowFromUrl() {
+  return readUrlAuthType() === "recovery";
 }
 
 async function requestPasswordReset(event) {
