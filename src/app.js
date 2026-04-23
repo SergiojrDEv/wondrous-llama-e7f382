@@ -564,16 +564,37 @@ function renderGoalManager() {
     return;
   }
 
+  const categoryOptions = (selected) => state.settings.categories.investment
+    .map(([value, label]) => `<option value="${esc(value)}"${value === selected ? " selected" : ""}>${esc(label)}</option>`)
+    .join("");
+
   target.innerHTML = state.settings.goals
     .map((goal, index) => {
       const [, categoryLabel] = getCategory("investment", goal.key);
       return `
-        <div class="manage-item">
+        <div class="manage-item goal-edit-item">
           <div>
             <strong>${esc(goal.name)}</strong>
             <small>${esc(categoryLabel)} | alvo ${money(Number(goal.target))}</small>
           </div>
-          <button class="mini-btn danger" type="button" data-remove-goal="${index}">Remover</button>
+          <div class="goal-edit-grid">
+            <label>
+              Nome
+              <input data-goal-name="${index}" type="text" value="${esc(goal.name)}">
+            </label>
+            <label>
+              Categoria
+              <select data-goal-category="${index}">${categoryOptions(goal.key)}</select>
+            </label>
+            <label>
+              Valor alvo
+              <input data-goal-target="${index}" type="number" min="1" step="0.01" value="${Number(goal.target) || 0}">
+            </label>
+          </div>
+          <div class="mini-actions">
+            <button class="mini-btn" type="button" data-save-goal="${index}">Salvar</button>
+            <button class="mini-btn danger" type="button" data-remove-goal="${index}">Remover</button>
+          </div>
         </div>
       `;
     })
@@ -1010,6 +1031,27 @@ function addGoal(event) {
   persist();
   renderAll();
   notify("Meta criada.");
+}
+
+function updateGoal(index) {
+  const goal = state.settings.goals[index];
+  if (!goal) return;
+  const nameInput = document.querySelector(`[data-goal-name="${index}"]`);
+  const categoryInput = document.querySelector(`[data-goal-category="${index}"]`);
+  const targetInput = document.querySelector(`[data-goal-target="${index}"]`);
+  if (!nameInput || !categoryInput || !targetInput) return;
+
+  const name = nameInput.value.trim();
+  const key = categoryInput.value;
+  const target = Number(targetInput.value);
+  if (!name || target <= 0) return notify("Preencha a meta corretamente.");
+
+  goal.name = name;
+  goal.key = key;
+  goal.target = target;
+  persist();
+  renderAll();
+  notify("Meta atualizada.");
 }
 
 function removeCategory(type, key) {
@@ -1663,12 +1705,18 @@ function bindEvents() {
     if (button) removeCreditCard(Number(button.dataset.removeCard));
   });
   document.querySelector("#goal-manage-list").addEventListener("click", (event) => {
-    const button = event.target.closest("[data-remove-goal]");
-    if (!button) return;
-    state.settings.goals.splice(Number(button.dataset.removeGoal), 1);
-    persist();
-    renderAll();
-    notify("Meta removida.");
+    const saveButton = event.target.closest("[data-save-goal]");
+    const removeButton = event.target.closest("[data-remove-goal]");
+    if (saveButton) {
+      updateGoal(Number(saveButton.dataset.saveGoal));
+      return;
+    }
+    if (removeButton) {
+      state.settings.goals.splice(Number(removeButton.dataset.removeGoal), 1);
+      persist();
+      renderAll();
+      notify("Meta removida.");
+    }
   });
   window.addEventListener("hashchange", setSectionFromHash);
 }

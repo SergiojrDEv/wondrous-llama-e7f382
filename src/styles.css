@@ -745,6 +745,21 @@ td {
   gap: 6px;
 }
 
+.goal-edit-item {
+  grid-template-columns: 1fr;
+}
+
+.goal-edit-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.8fr) minmax(120px, 0.6fr);
+  gap: 10px;
+}
+
+.goal-edit-grid label {
+  gap: 6px;
+  font-size: 0.72rem;
+}
+
 .mini-btn {
   min-height: 30px;
   border-radius: 7px;
@@ -880,6 +895,7 @@ td {
   .smart-metrics,
   .budget-grid,
   .goals-grid,
+  .goal-edit-grid,
   .settings-grid,
   .settings-lists,
   .field-row {
