@@ -756,6 +756,15 @@ td {
   gap: 14px;
 }
 
+.metas-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.goal-create-panel {
+  max-width: 720px;
+}
+
 .budget-card,
 .goal-card,
 .manage-item {

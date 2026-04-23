@@ -387,7 +387,33 @@
     </section>
 
     <section class="section" id="metas">
-      <div class="goals-grid" id="goals-list"></div>
+      <div class="metas-shell">
+        <form class="panel goal-create-panel" id="goal-form">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Metas</p>
+              <h2>Criar nova meta</h2>
+            </div>
+          </div>
+          <label>
+            Nome
+            <input id="new-goal-name" type="text" placeholder="Ex: Carro, viagem, reserva" required>
+          </label>
+          <div class="field-row">
+            <label>
+              Categoria de investimento
+              <select id="new-goal-category" required></select>
+            </label>
+            <label>
+              Valor alvo
+              <input id="new-goal-target" type="number" min="1" step="0.01" placeholder="0,00" required>
+            </label>
+          </div>
+          <button class="primary-btn full" type="submit">Adicionar meta</button>
+        </form>
+
+        <div class="goals-grid" id="goals-list"></div>
+      </div>
     </section>
 
     <section class="section" id="relatorios">
@@ -485,29 +511,6 @@
           <button class="primary-btn full" type="submit">Adicionar cartao</button>
         </form>
 
-        <form class="panel settings-panel" id="goal-form">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">Metas</p>
-              <h2>Criar nova meta</h2>
-            </div>
-          </div>
-          <label>
-            Nome
-            <input id="new-goal-name" type="text" placeholder="Ex: Carro, viagem, reserva" required>
-          </label>
-          <div class="field-row">
-            <label>
-              Categoria de investimento
-              <select id="new-goal-category" required></select>
-            </label>
-            <label>
-              Valor alvo
-              <input id="new-goal-target" type="number" min="1" step="0.01" placeholder="0,00" required>
-            </label>
-          </div>
-          <button class="primary-btn full" type="submit">Adicionar meta</button>
-        </form>
       </div>
 
       <div class="settings-lists">
