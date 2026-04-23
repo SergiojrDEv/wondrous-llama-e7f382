@@ -185,16 +185,22 @@ function syncCategoryMonthlyLimit(categoryKey, monthly) {
   if (category) category[3] = monthly;
 }
 
-function mergeSubcategories(saved = {}) {
+function getCategoryColorFromList(type, categoryKey, categories = defaultSettings.categories) {
+  return categories?.[type]?.find(([key]) => key === categoryKey)?.[2] || "#94a3b8";
+}
+
+function mergeSubcategories(saved = {}, categories = defaultSettings.categories) {
   const result = { expense: {}, income: {}, investment: {} };
   ["expense", "income", "investment"].forEach((type) => {
     const defaults = defaultSettings.subcategories[type] || {};
     Object.entries(defaults).forEach(([categoryKey, items]) => {
-      result[type][categoryKey] = clone(items);
+      const fallbackColor = getCategoryColorFromList(type, categoryKey, categories);
+      result[type][categoryKey] = clone(items).map((item) => [item[0], item[1], item[2] || fallbackColor]);
     });
     Object.entries(saved[type] || {}).forEach(([categoryKey, items]) => {
       if (Array.isArray(items) && items.length) {
-        result[type][categoryKey] = items.map((item) => [item[0], item[1]]);
+        const fallbackColor = getCategoryColorFromList(type, categoryKey, categories);
+        result[type][categoryKey] = items.map((item) => [item[0], item[1], item[2] || fallbackColor]);
       }
     });
   });
@@ -209,6 +215,12 @@ function getSubcategoryLabel(type, categoryKey, subcategoryKey) {
   if (!subcategoryKey) return "";
   const match = getSubcategories(type, categoryKey).find(([key]) => key === subcategoryKey);
   return match ? match[1] : subcategoryKey;
+}
+
+function getSubcategoryColor(type, categoryKey, subcategoryKey) {
+  if (!subcategoryKey) return getCategoryColorFromList(type, categoryKey, state.settings.categories);
+  const match = getSubcategories(type, categoryKey).find(([key]) => key === subcategoryKey);
+  return match?.[2] || getCategoryColorFromList(type, categoryKey, state.settings.categories);
 }
 
 function categoryDisplayLabel(item) {
@@ -271,7 +283,7 @@ function mergeSettings(saved = {}) {
     accounts: saved.accounts?.length ? saved.accounts : [...defaultSettings.accounts],
     creditCards: saved.creditCards?.length ? saved.creditCards : clone(defaultSettings.creditCards),
     categories,
-    subcategories: mergeSubcategories(saved.subcategories),
+    subcategories: mergeSubcategories(saved.subcategories, categories),
     goals: saved.goals?.length ? saved.goals : clone(defaultSettings.goals),
     budgetRules: mergeBudgetRules(saved.budgetRules, categories.expense),
   };
@@ -1111,8 +1123,9 @@ function renderSubcategoryManager() {
         </div>
       </header>
       <div class="tag-chip-wrap">
-        ${group.tags.length ? group.tags.map(([subKey, subLabel]) => `
-          <div class="tag-chip">
+        ${group.tags.length ? group.tags.map(([subKey, subLabel, subColor]) => `
+          <div class="tag-chip" style="--tag-color:${esc(subColor || getCategoryColorFromList(group.type, group.categoryKey, state.settings.categories))}">
+            <span class="tag-chip-dot"></span>
             <span>${esc(subLabel)}</span>
             <span class="tag-chip-actions">
               <button
@@ -1148,13 +1161,14 @@ function addInlineSubcategory(type, categoryKey, name) {
   const normalized = name.trim();
   if (!normalized) return notify("Informe um nome para a etiqueta.");
   const key = slugify(normalized);
+  const color = getCategoryColorFromList(type, categoryKey, state.settings.categories);
   state.settings.subcategories[type] ||= {};
   state.settings.subcategories[type][categoryKey] ||= [];
   if (state.settings.subcategories[type][categoryKey].some(([itemKey]) => itemKey === key)) {
     return notify("Esta etiqueta ja existe nessa categoria.");
   }
 
-  state.settings.subcategories[type][categoryKey].push([key, normalized]);
+  state.settings.subcategories[type][categoryKey].push([key, normalized, color]);
   persist();
   renderAll();
   notify("Etiqueta adicionada.");
@@ -1169,8 +1183,13 @@ function openSettingsItemModal(config) {
   document.querySelector("#settings-item-modal-limit").value = Number(config.limit || 0);
   document.querySelector("#settings-item-modal-closing").value = Number(config.closingDay || 25);
   document.querySelector("#settings-item-modal-due").value = Number(config.dueDay || 10);
-  document.querySelector("#settings-item-modal-category-fields").classList.toggle("is-hidden", config.kind !== "category");
-  document.querySelector("#settings-item-modal-category-fields").hidden = config.kind !== "category";
+  const showColor = config.kind === "category" || config.kind === "tag";
+  document.querySelector("#settings-item-modal-category-fields").classList.toggle("is-hidden", !showColor && config.kind !== "category");
+  document.querySelector("#settings-item-modal-category-fields").hidden = !showColor && config.kind !== "category";
+  document.querySelector("#settings-item-modal-color-field").classList.toggle("is-hidden", !showColor);
+  document.querySelector("#settings-item-modal-color-field").hidden = !showColor;
+  document.querySelector("#settings-item-modal-limit-field").classList.toggle("is-hidden", config.kind !== "category");
+  document.querySelector("#settings-item-modal-limit-field").hidden = config.kind !== "category";
   document.querySelector("#settings-item-modal-card-fields").classList.toggle("is-hidden", config.kind !== "card");
   document.querySelector("#settings-item-modal-card-fields").hidden = config.kind !== "card";
   document.querySelector("#settings-item-modal-overlay").classList.remove("is-hidden");
@@ -1230,6 +1249,7 @@ function saveSettingsItemFromModal(event) {
     const item = list?.find(([key]) => key === edit.subKey);
     if (!item) return closeSettingsItemModal();
     item[1] = name;
+    item[2] = document.querySelector("#settings-item-modal-color").value;
   }
 
   persist();
@@ -1703,6 +1723,7 @@ function addSubcategory(event) {
   const type = document.querySelector("#new-subcategory-type").value;
   const categoryKey = document.querySelector("#new-subcategory-category").value;
   const name = document.querySelector("#new-subcategory-name").value.trim();
+  const color = document.querySelector("#new-subcategory-color").value || getCategoryColorFromList(type, categoryKey, state.settings.categories);
   if (!name || !categoryKey) return notify("Preencha a subcategoria corretamente.");
 
   const key = slugify(name);
@@ -1712,9 +1733,10 @@ function addSubcategory(event) {
     return notify("Esta subcategoria ja existe nessa categoria.");
   }
 
-  state.settings.subcategories[type][categoryKey].push([key, name]);
+  state.settings.subcategories[type][categoryKey].push([key, name, color]);
   event.currentTarget.reset();
   document.querySelector("#new-subcategory-type").value = type;
+  document.querySelector("#new-subcategory-color").value = "#0b7285";
   renderSubcategoryParentOptions();
   persist();
   renderAll();
@@ -2656,6 +2678,7 @@ function bindEvents() {
         categoryKey,
         subKey,
         name: item[1],
+        color: item[2] || getCategoryColorFromList(type, categoryKey, state.settings.categories),
       });
     }
   });
