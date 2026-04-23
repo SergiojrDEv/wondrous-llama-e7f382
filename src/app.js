@@ -414,7 +414,12 @@ function renderSummary() {
   );
   const investRate = totals.income ? (totals.investment / totals.income) * 100 : 0;
   const commitment = totals.income ? ((totals.expense + totals.investment) / totals.income) * 100 : 0;
-  const health = totals.income ? Math.max(0, Math.min(100, 100 - commitment + investRate)) : 0;
+  const hasTransactions = transactions.length > 0;
+  const health = totals.income
+    ? Math.max(0, Math.min(100, 100 - commitment + investRate))
+    : hasTransactions
+      ? Math.max(12, Math.min(58, totals.investment > 0 ? 36 + Math.min(22, totals.investment / 100) : 18 - Math.min(8, totals.expense / 500)))
+      : 0;
 
   document.querySelector("#income-total").textContent = money(totals.income);
   document.querySelector("#expense-total").textContent = money(totals.expense);
@@ -426,7 +431,13 @@ function renderSummary() {
   document.querySelector("#commitment-rate").textContent = `${commitment.toFixed(1)}% comprometido`;
   document.querySelector("#health-score").textContent = `${Math.round(health)}%`;
   document.querySelector("#health-copy").textContent =
-    health >= 70 ? "Bom equilibrio entre gastos, reserva e investimentos." : "Revise os maiores gastos e proteja o saldo livre.";
+    !hasTransactions
+      ? "Adicione receitas e despesas para medir o mes."
+      : !totals.income
+        ? "Ja da para ler o mes, mas registrar receitas deixa a saude financeira mais precisa."
+        : health >= 70
+          ? "Bom equilibrio entre gastos, reserva e investimentos."
+          : "Revise os maiores gastos e proteja o saldo livre.";
   renderSmartDashboard(transactions, totals, free);
 }
 
