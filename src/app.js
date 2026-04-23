@@ -215,6 +215,16 @@ function updateCreditCardOptions() {
     .join("");
 }
 
+function updateCreditPaymentFields() {
+  const isCredit = document.querySelector("#payment-method").value === "credit";
+  document.querySelector("#credit-card-field").classList.toggle("is-hidden", !isCredit);
+  document.querySelector("#installments-field").classList.toggle("is-hidden", !isCredit);
+  if (!isCredit) {
+    document.querySelector("#credit-card").value = "";
+    document.querySelector("#installments").value = 1;
+  }
+}
+
 function setActiveType(type) {
   state.activeType = type;
   document.querySelectorAll(".segment").forEach((button) => {
@@ -635,7 +645,9 @@ function addTransaction(event) {
     updateTransaction(formData);
     return;
   }
-  const installments = Math.max(1, Number(formData.get("installments") || 1));
+  const paymentMethod = formData.get("paymentMethod") || "pix";
+  const isCredit = paymentMethod === "credit";
+  const installments = isCredit ? Math.max(1, Number(formData.get("installments") || 1)) : 1;
   const repeatCount = Math.max(1, Number(formData.get("repeatCount") || 1));
   const recurrence = formData.get("recurrence");
   const totalItems = installments > 1 ? installments : recurrence === "monthly" ? repeatCount : 1;
@@ -656,8 +668,8 @@ function addTransaction(event) {
       date,
       dueDate,
       status: formData.get("status") || "paid",
-      paymentMethod: formData.get("paymentMethod") || "pix",
-      creditCardId: formData.get("creditCardId") || null,
+      paymentMethod,
+      creditCardId: isCredit ? formData.get("creditCardId") || null : null,
       recurrence: recurrence || "none",
       recurrenceId: recurrence === "monthly" ? groupId : null,
       installmentGroup: installments > 1 ? groupId : null,
@@ -687,8 +699,14 @@ function updateTransaction(formData) {
   item.date = formData.get("date");
   item.dueDate = formData.get("dueDate") || formData.get("date");
   item.status = formData.get("status") || "paid";
-  item.paymentMethod = formData.get("paymentMethod") || "pix";
-  item.creditCardId = formData.get("creditCardId") || null;
+  const paymentMethod = formData.get("paymentMethod") || "pix";
+  item.paymentMethod = paymentMethod;
+  item.creditCardId = paymentMethod === "credit" ? formData.get("creditCardId") || null : null;
+  if (paymentMethod !== "credit") {
+    item.installmentGroup = null;
+    item.installmentNumber = null;
+    item.installmentTotal = null;
+  }
   persist();
   resetTransactionForm();
   renderAll();
@@ -708,6 +726,7 @@ function editTransaction(id) {
   document.querySelector("#due-date").value = item.dueDate || item.date;
   document.querySelector("#status").value = item.status || "paid";
   document.querySelector("#payment-method").value = item.paymentMethod || "pix";
+  updateCreditPaymentFields();
   document.querySelector("#credit-card").value = item.creditCardId || "";
   document.querySelector("#installments").value = item.installmentTotal || 1;
   document.querySelector("#recurrence").value = "none";
@@ -734,6 +753,7 @@ function resetTransactionForm() {
   document.querySelector("#transaction-form-title").textContent = "Novo lancamento";
   document.querySelector("#transaction-submit").textContent = "Salvar lancamento";
   document.querySelector("#cancel-edit").classList.add("is-hidden");
+  updateCreditPaymentFields();
 }
 
 function markTransactionPaid(id) {
@@ -1375,6 +1395,7 @@ function bindEvents() {
   document.querySelector("#signup-phone").addEventListener("input", (event) => {
     event.target.value = formatPhone(event.target.value);
   });
+  document.querySelector("#payment-method").addEventListener("change", updateCreditPaymentFields);
   document.querySelector("#logout-btn").addEventListener("click", signOutSupabase);
   document.querySelector("#cancel-edit").addEventListener("click", resetTransactionForm);
   els.search.addEventListener("input", (event) => {
@@ -1470,6 +1491,7 @@ async function init() {
   setActiveType("expense");
   updateAccountOptions();
   updateCreditCardOptions();
+  updateCreditPaymentFields();
   bindEvents();
   setSectionFromHash();
   renderAll();
