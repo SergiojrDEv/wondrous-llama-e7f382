@@ -2528,11 +2528,6 @@ function bindEvents() {
     state.currentDate = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth() + 1, 1);
     renderAll();
   });
-  document.querySelector("#open-transaction").addEventListener("click", () => {
-    location.hash = "novo-lancamento";
-    setSectionFromHash();
-    document.querySelector("#description").focus();
-  });
   document.querySelector("#go-to-new-transaction").addEventListener("click", () => {
     location.hash = "novo-lancamento";
     setSectionFromHash();
