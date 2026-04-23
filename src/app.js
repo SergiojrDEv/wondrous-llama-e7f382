@@ -1115,7 +1115,7 @@ async function initSupabase() {
 
   const config = await loadSupabaseConfig();
   if (!config?.url || !config?.anonKey) {
-    renderCloudStatus("Configure no Netlify");
+    renderCloudStatus("Configure o deploy");
     renderAuthGate("Nao foi possivel conectar agora. Tente novamente em instantes.");
     return false;
   }
@@ -1170,11 +1170,14 @@ async function ensureSupabaseReady() {
 async function loadSupabaseConfig() {
   if (window.FINANCE_FLOW_SUPABASE) return window.FINANCE_FLOW_SUPABASE;
 
+  const endpoints = ["/.netlify/functions/config", "/api/config"];
   try {
-    const response = await fetch("/.netlify/functions/config", { cache: "no-store" });
-    if (!response.ok) return SUPABASE_FALLBACK_CONFIG;
-    const config = await response.json();
-    if (config?.url && config?.anonKey) return config;
+    for (const endpoint of endpoints) {
+      const response = await fetch(endpoint, { cache: "no-store" });
+      if (!response.ok) continue;
+      const config = await response.json();
+      if (config?.url && config?.anonKey) return config;
+    }
     return SUPABASE_FALLBACK_CONFIG;
   } catch (error) {
     return SUPABASE_FALLBACK_CONFIG;

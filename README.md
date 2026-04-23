@@ -6,16 +6,16 @@ Software de controle financeiro pessoal em HTML, CSS e JavaScript puro.
 
 Abra o arquivo `index.html` no navegador. Os dados ficam salvos no `localStorage` do proprio navegador.
 
-## Como conectar no Supabase e Netlify
+## Como conectar no Supabase e publicar
 
 1. No Supabase, abra o SQL Editor e execute `docs/supabase-schema.sql`.
 2. No Supabase, va em `Authentication > Providers > Email` e mantenha a confirmacao por e-mail ativada.
-3. Em `Authentication > URL Configuration`, configure a URL do site publicado no Netlify como Site URL.
-4. No Netlify, entre no site do projeto anterior e publique esta pasta como o novo deploy.
-5. Em `Site configuration > Environment variables`, crie se quiser sobrescrever a configuracao embutida:
+3. Em `Authentication > URL Configuration`, configure a URL do site publicado como Site URL.
+4. Publique este projeto no Cloudflare Pages ou no Netlify.
+5. Se quiser sobrescrever a configuracao embutida, crie estas variaveis no provedor de deploy:
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY`
-6. Garanta que o dominio esta apontando para este mesmo site no Netlify.
+6. Garanta que o dominio esta apontando para este mesmo site.
 7. Abra o site publicado, crie a conta, confirme o e-mail e depois entre na tela inicial.
 
 Ao entrar, o app baixa os dados do Supabase automaticamente. Depois disso, cada alteracao feita no app e salva localmente e sincronizada com o Supabase em segundo plano.
@@ -28,8 +28,8 @@ O app ja tem fallback para o projeto Supabase `gxwukctgfrquureyerli` usando a pu
 - `src/styles.css`: layout, tema visual e responsividade.
 - `src/app.js`: regras de negocio, persistencia local, graficos, filtros e exportacao.
 - `docs/supabase-schema.sql`: estrutura SQL opcional para uma futura integracao com Supabase.
-- `netlify.toml`: configuracao de deploy para Netlify.
-- `netlify/functions/config.js`: entrega as variaveis publicas do Supabase para o navegador.
+- `functions/api/config.js`: endpoint para Cloudflare Pages entregar as variaveis publicas do Supabase.
+- `netlify.toml` e `netlify/functions/config.js`: compatibilidade com deploy no Netlify.
 
 ## Funcionalidades
 

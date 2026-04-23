@@ -1,5 +1,7 @@
 # Deploy no Netlify
 
+Se o seu time do Netlify estiver pausado por limite ou cobranca, use `docs/deploy-cloudflare-pages.md`.
+
 ## Opcao recomendada: GitHub + Netlify
 
 1. Crie um repositorio no GitHub.
