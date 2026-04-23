@@ -59,6 +59,7 @@ const state = {
   cloudReady: false,
   isSyncing: false,
   syncTimer: null,
+  supabaseInitPromise: null,
 };
 
 const els = {
@@ -1011,17 +1012,19 @@ function editExpenseLimit(key) {
 }
 
 async function initSupabase() {
+  if (state.supabaseClient) return true;
+
   if (!window.supabase) {
     renderCloudStatus("Supabase indisponivel");
     renderAuthGate("Nao foi possivel conectar agora. Tente novamente em instantes.");
-    return;
+    return false;
   }
 
   const config = await loadSupabaseConfig();
   if (!config?.url || !config?.anonKey) {
     renderCloudStatus("Configure no Netlify");
     renderAuthGate("Nao foi possivel conectar agora. Tente novamente em instantes.");
-    return;
+    return false;
   }
 
   state.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
@@ -1057,6 +1060,18 @@ async function initSupabase() {
     renderCloudStatus();
     if (state.currentUser) await pullFromSupabase({ silent: true });
   });
+  return true;
+}
+
+async function ensureSupabaseReady() {
+  if (state.supabaseClient) return true;
+  if (!state.supabaseInitPromise) state.supabaseInitPromise = initSupabase();
+  const isReady = await state.supabaseInitPromise;
+  if (!isReady || !state.supabaseClient) {
+    notify("Conexao com Supabase indisponivel. Atualize a pagina.");
+    return false;
+  }
+  return true;
 }
 
 async function loadSupabaseConfig() {
@@ -1093,7 +1108,7 @@ function isEmailConfirmed(user) {
 
 async function signInSupabase(event) {
   if (event) event.preventDefault();
-  if (!state.supabaseClient) return notify("Configure o Supabase no Netlify primeiro.");
+  if (!(await ensureSupabaseReady())) return;
   const credentials = getAuthCredentials();
   const email = credentials.email;
   const password = credentials.password;
@@ -1118,7 +1133,7 @@ async function signInSupabase(event) {
 }
 
 async function signUpSupabase() {
-  if (!state.supabaseClient) return notify("Configure o Supabase no Netlify primeiro.");
+  if (!(await ensureSupabaseReady())) return;
   const profile = getSignupProfile();
   const validationError = validateSignupProfile(profile);
   if (validationError) return notify(validationError);
@@ -1263,7 +1278,7 @@ async function saveUserProfileFromMetadata(user) {
 
 function requireCloudUser() {
   if (!state.supabaseClient) {
-    notify("Configure o Supabase no Netlify primeiro.");
+    notify("Conexao com Supabase indisponivel. Atualize a pagina.");
     return false;
   }
   if (!state.currentUser) {
@@ -1609,7 +1624,8 @@ async function init() {
   bindEvents();
   setSectionFromHash();
   renderAll();
-  await initSupabase();
+  state.supabaseInitPromise = initSupabase();
+  await state.supabaseInitPromise;
 }
 
 init().catch((error) => {
