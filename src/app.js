@@ -107,9 +107,11 @@ const els = {
   authScreen: document.querySelector("#auth-screen"),
   appShell: document.querySelector("#app-shell"),
   sidebar: document.querySelector("#sidebar"),
+  mobileNav: document.querySelector("#mobile-nav"),
   authNote: document.querySelector("#auth-note"),
   authTitle: document.querySelector("#auth-title"),
   installApp: document.querySelector("#install-app"),
+  installAppPanel: document.querySelector("#install-app-panel"),
 };
 
 const formatter = new Intl.NumberFormat("pt-BR", {
@@ -314,8 +316,11 @@ function updateInstallButton() {
   if (!els.installApp) return;
   const standalone = isStandaloneMode();
   els.installApp.classList.toggle("is-hidden", standalone);
+  if (els.installAppPanel) els.installAppPanel.classList.toggle("is-hidden", standalone);
   if (standalone) return;
-  els.installApp.textContent = state.deferredInstallPrompt ? "Instalar app" : "Como instalar";
+  const label = state.deferredInstallPrompt ? "Instalar app" : "Como instalar";
+  els.installApp.textContent = label;
+  if (els.installAppPanel) els.installAppPanel.textContent = label;
 }
 
 function setupPwaSupport() {
@@ -2046,6 +2051,7 @@ function renderAuthGate(message) {
   els.authScreen.classList.toggle("is-hidden", isLogged);
   els.appShell.classList.toggle("is-hidden", !isLogged);
   els.sidebar.classList.toggle("is-hidden", !isLogged);
+  if (els.mobileNav) els.mobileNav.classList.toggle("is-hidden", !isLogged);
   if (message) els.authNote.textContent = message;
   else if (!state.cloudReady) els.authNote.textContent = "Preparando acesso...";
   else els.authNote.textContent = isLogged ? "Sessao conectada." : "Entre para continuar.";
@@ -2542,6 +2548,7 @@ function bindEvents() {
   });
   document.querySelector("#seed-data").addEventListener("click", seedData);
   document.querySelector("#install-app").addEventListener("click", promptInstallApp);
+  document.querySelector("#install-app-panel").addEventListener("click", promptInstallApp);
   document.querySelectorAll(".segment").forEach((button) =>
     button.addEventListener("click", () => setActiveType(button.dataset.type))
   );
@@ -2787,6 +2794,7 @@ function setSectionFromHash() {
   document.querySelectorAll(".nav-item").forEach((item) => {
     item.classList.toggle("active", item.dataset.section === id);
   });
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 async function init() {
