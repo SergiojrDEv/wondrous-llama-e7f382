@@ -83,7 +83,7 @@ function bindEvents() {
   document.querySelectorAll(".segment").forEach((button) =>
     button.addEventListener("click", () => deps.setActiveType(button.dataset.type))
   );
-  els.form?.addEventListener("submit", deps.addTransaction);
+  els.form.addEventListener("submit", deps.addTransaction);
   on("#category-form", "submit", deps.addCategory);
   on("#account-form", "submit", deps.addAccount);
   on("#card-form", "submit", deps.addCreditCard);
@@ -141,15 +141,15 @@ function bindEvents() {
   on("#new-subcategory-type", "change", deps.renderSubcategoryParentOptions);
   on("#logout-btn", "click", deps.signOutSupabase);
   on("#cancel-edit", "click", deps.resetTransactionForm);
-  els.search?.addEventListener("input", (event) => {
+  els.search.addEventListener("input", (event) => {
     state.search = event.target.value;
     deps.renderTable();
   });
-  els.typeFilter?.addEventListener("change", (event) => {
+  els.typeFilter.addEventListener("change", (event) => {
     state.typeFilter = event.target.value;
     deps.renderTable();
   });
-  els.table?.addEventListener("click", (event) => {
+  els.table.addEventListener("click", (event) => {
     const removeButton = event.target.closest("[data-remove]");
     const editButton = event.target.closest("[data-edit]");
     const paidButton = event.target.closest("[data-paid]");
@@ -328,22 +328,15 @@ deps.setSectionFromHash = setSectionFromHash;
 
 async function init() {
   deps.load();
+  deps.setDefaultDate();
+  deps.setActiveType("expense");
+  deps.updateAccountOptions();
+  deps.updateCreditCardOptions();
+  deps.updateCreditPaymentFields();
   deps.setupPwaSupport();
   bindEvents();
   setSectionFromHash();
-
-  try {
-    deps.setDefaultDate();
-    deps.setActiveType("expense");
-    deps.updateAccountOptions();
-    deps.updateCreditCardOptions();
-    deps.updateCreditPaymentFields();
-    deps.renderAll();
-  } catch (error) {
-    console.error("Erro ao preparar interface principal", error);
-    deps.renderAuthGate("A interface principal falhou ao carregar, mas voce pode entrar novamente.");
-  }
-
+  deps.renderAll();
   state.supabaseInitPromise = deps.initSupabase();
   await state.supabaseInitPromise;
 }
