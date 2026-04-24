@@ -8,6 +8,14 @@ import {
 } from "../core/catalog.js";
 
 export function createSupabaseModule(deps) {
+  async function waitForSupabaseGlobal(retries = 20, delayMs = 150) {
+    for (let attempt = 0; attempt < retries; attempt += 1) {
+      if (window.supabase?.createClient) return true;
+      await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+    }
+    return Boolean(window.supabase?.createClient);
+  }
+
   function isMissingRelationError(error) {
     const message = String(error?.message || "").toLowerCase();
     return message.includes("does not exist") || message.includes("could not find") || error?.code === "PGRST205";
@@ -629,7 +637,8 @@ export function createSupabaseModule(deps) {
   async function initSupabase() {
     if (state.supabaseClient) return true;
 
-    if (!window.supabase) {
+    const supabaseReady = await waitForSupabaseGlobal();
+    if (!supabaseReady) {
       renderCloudStatus("Supabase indisponivel");
       deps.renderAuthGate("Nao foi possivel conectar agora. Tente novamente em instantes.");
       return false;
@@ -710,6 +719,7 @@ export function createSupabaseModule(deps) {
     if (!state.supabaseInitPromise) state.supabaseInitPromise = initSupabase();
     const isReady = await state.supabaseInitPromise;
     if (!isReady || !state.supabaseClient) {
+      state.supabaseInitPromise = null;
       deps.notify("Conexao com Supabase indisponivel. Atualize a pagina.");
       return false;
     }
