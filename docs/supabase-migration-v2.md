@@ -56,7 +56,7 @@ Aqui vale fazer um script SQL ou backend de migracao por usuario.
 
 ## Passo 3: migrar transacoes
 
-A tabela atual `public.transactions` deve alimentar a nova `public.transactions` da V2 com estes mapeamentos:
+A tabela atual `public.transactions` deve alimentar a nova `public.transactions_v2` da V2 com estes mapeamentos:
 
 - `descricao` -> `description`
 - `type` -> `transaction_kind`

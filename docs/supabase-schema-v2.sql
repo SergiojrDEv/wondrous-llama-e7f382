@@ -1,6 +1,8 @@
 -- Finance Flow V2 relational schema for Supabase/Postgres.
 -- This is the target architecture schema for the next evolution step.
 -- It does not replace docs/supabase-schema.sql yet; use it as the next migration base.
+-- Important: in environments that already use the legacy `public.transactions`,
+-- the V2 ledger is created as `public.transactions_v2` to avoid conflicts during migration.
 
 create extension if not exists pgcrypto;
 
@@ -15,6 +17,12 @@ create table if not exists public.user_profiles (
   created_at timestamptz not null default now(),
   constraint user_profiles_currency_check check (preferred_currency in ('BRL', 'USD', 'EUR'))
 );
+
+alter table public.user_profiles
+  add column if not exists preferred_currency text not null default 'BRL';
+
+alter table public.user_profiles
+  add column if not exists created_at timestamptz not null default now();
 
 create table if not exists public.accounts (
   id uuid primary key default gen_random_uuid(),
@@ -146,7 +154,7 @@ create table if not exists public.recurring_rules (
   constraint recurring_rules_status_check check (status in ('active', 'paused', 'ended'))
 );
 
-create table if not exists public.transactions (
+create table if not exists public.transactions_v2 (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users on delete cascade,
   transaction_kind text not null,
@@ -176,7 +184,7 @@ create table if not exists public.transactions (
   constraint transactions_payment_method_check check (payment_method in ('pix', 'debit', 'credit', 'cash', 'transfer')),
   constraint transactions_installment_number_check check (installment_number is null or installment_number > 0),
   constraint transactions_installment_total_check check (installment_total is null or installment_total > 0),
-  constraint transactions_installment_pair_check check (
+  constraint transactions_v2_installment_pair_check check (
     (installment_number is null and installment_total is null)
     or (installment_number is not null and installment_total is not null and installment_number <= installment_total)
   )
@@ -209,10 +217,10 @@ create index if not exists category_tags_category_idx on public.category_tags (c
 create index if not exists budgets_user_period_idx on public.budgets (user_id, period_kind, starts_on desc);
 create index if not exists goals_user_idx on public.goals (user_id) where is_archived = false;
 create index if not exists recurring_rules_user_status_idx on public.recurring_rules (user_id, status, next_run_on);
-create index if not exists transactions_user_date_idx on public.transactions (user_id, transaction_date desc);
-create index if not exists transactions_user_status_idx on public.transactions (user_id, status);
-create index if not exists transactions_user_card_idx on public.transactions (user_id, credit_card_id, due_date);
-create index if not exists transactions_installment_group_idx on public.transactions (user_id, installment_group_id);
+create index if not exists transactions_v2_user_date_idx on public.transactions_v2 (user_id, transaction_date desc);
+create index if not exists transactions_v2_user_status_idx on public.transactions_v2 (user_id, status);
+create index if not exists transactions_v2_user_card_idx on public.transactions_v2 (user_id, credit_card_id, due_date);
+create index if not exists transactions_v2_installment_group_idx on public.transactions_v2 (user_id, installment_group_id);
 create index if not exists audit_logs_user_entity_idx on public.audit_logs (user_id, entity_type, created_at desc);
 
 alter table public.user_profiles enable row level security;
@@ -223,7 +231,7 @@ alter table public.category_tags enable row level security;
 alter table public.budgets enable row level security;
 alter table public.goals enable row level security;
 alter table public.recurring_rules enable row level security;
-alter table public.transactions enable row level security;
+alter table public.transactions_v2 enable row level security;
 alter table public.audit_logs enable row level security;
 alter table public.finance_settings enable row level security;
 
@@ -299,14 +307,14 @@ create policy "Users can insert own recurring rules" on public.recurring_rules f
 create policy "Users can update own recurring rules" on public.recurring_rules for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Users can delete own recurring rules" on public.recurring_rules for delete using (auth.uid() = user_id);
 
-drop policy if exists "Users can read own transactions" on public.transactions;
-drop policy if exists "Users can insert own transactions" on public.transactions;
-drop policy if exists "Users can update own transactions" on public.transactions;
-drop policy if exists "Users can delete own transactions" on public.transactions;
-create policy "Users can read own transactions" on public.transactions for select using (auth.uid() = user_id);
-create policy "Users can insert own transactions" on public.transactions for insert with check (auth.uid() = user_id);
-create policy "Users can update own transactions" on public.transactions for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy "Users can delete own transactions" on public.transactions for delete using (auth.uid() = user_id);
+drop policy if exists "Users can read own transactions_v2" on public.transactions_v2;
+drop policy if exists "Users can insert own transactions_v2" on public.transactions_v2;
+drop policy if exists "Users can update own transactions_v2" on public.transactions_v2;
+drop policy if exists "Users can delete own transactions_v2" on public.transactions_v2;
+create policy "Users can read own transactions_v2" on public.transactions_v2 for select using (auth.uid() = user_id);
+create policy "Users can insert own transactions_v2" on public.transactions_v2 for insert with check (auth.uid() = user_id);
+create policy "Users can update own transactions_v2" on public.transactions_v2 for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users can delete own transactions_v2" on public.transactions_v2 for delete using (auth.uid() = user_id);
 
 drop policy if exists "Users can read own audit logs" on public.audit_logs;
 drop policy if exists "Users can insert own audit logs" on public.audit_logs;
