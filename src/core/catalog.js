@@ -2,6 +2,14 @@ function localId(prefix, ...parts) {
   return `${prefix}:${parts.map((part) => String(part || "").toLowerCase()).join(":")}`;
 }
 
+export function humanizeSlug(value) {
+  return String(value || "")
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ") || "Outros";
+}
+
 function inferAccountKind(name) {
   const lower = String(name || "").toLowerCase();
   if (lower.includes("cartao")) return "credit_card";
@@ -215,4 +223,43 @@ export function buildCatalogFromV2({ accounts, creditCards, categories, category
       isArchived: Boolean(item.is_archived),
     })),
   };
+}
+
+export function ensureCatalogCoversTransactions(catalog, transactions = []) {
+  const nextCatalog = catalog || { accounts: [], creditCards: [], categories: [], tags: [], budgets: [], goals: [] };
+  transactions.forEach((item) => {
+    const kind = item.type || item.transaction_kind || "expense";
+    const categorySlug = item.category || item.cat;
+    if (!categorySlug) return;
+
+    const hasCategory = nextCatalog.categories.some((category) => category.kind === kind && category.slug === categorySlug && !category.isArchived);
+    if (!hasCategory) {
+      nextCatalog.categories.push({
+        id: localId("category", kind, categorySlug),
+        kind,
+        slug: categorySlug,
+        name: humanizeSlug(categorySlug),
+        color: "#667085",
+        monthlyLimit: kind === "expense" ? 0 : null,
+        isArchived: false,
+      });
+    }
+
+    const tagSlug = item.subcategory || item.subcat;
+    if (!tagSlug) return;
+    const hasTag = nextCatalog.tags.some((tag) => tag.kind === kind && tag.categorySlug === categorySlug && tag.slug === tagSlug && !tag.isArchived);
+    if (!hasTag) {
+      nextCatalog.tags.push({
+        id: localId("tag", kind, categorySlug, tagSlug),
+        kind,
+        categorySlug,
+        slug: tagSlug,
+        name: humanizeSlug(tagSlug),
+        color: "#667085",
+        isArchived: false,
+      });
+    }
+  });
+
+  return nextCatalog;
 }

@@ -1,5 +1,5 @@
 import { SUPABASE_FALLBACK_CONFIG, state } from "../core/state.js";
-import { buildCatalogFromV2 } from "../core/catalog.js";
+import { buildCatalogFromV2, ensureCatalogCoversTransactions } from "../core/catalog.js";
 
 export function createSupabaseModule(deps) {
   function isMissingRelationError(error) {
@@ -192,6 +192,7 @@ export function createSupabaseModule(deps) {
       budgetsResult,
       goalsResult,
       transactionsResult,
+      legacyTransactionsResult,
     ] = await Promise.all([
       client.from("accounts").select("*").eq("user_id", userId).eq("is_archived", false).order("created_at", { ascending: true }),
       client.from("credit_cards").select("*").eq("user_id", userId).eq("is_archived", false).order("created_at", { ascending: true }),
@@ -200,6 +201,7 @@ export function createSupabaseModule(deps) {
       client.from("budgets").select("*").eq("user_id", userId).order("created_at", { ascending: true }),
       client.from("goals").select("*").eq("user_id", userId).eq("is_archived", false).order("created_at", { ascending: true }),
       client.from("transactions_v2").select("*").eq("user_id", userId).order("created_at", { ascending: true }),
+      client.from("transactions").select("id,cat,subcat,type").eq("user_id", userId),
     ]);
 
     const firstError = [
@@ -210,6 +212,7 @@ export function createSupabaseModule(deps) {
       budgetsResult.error,
       goalsResult.error,
       transactionsResult.error,
+      legacyTransactionsResult.error && !isMissingRelationError(legacyTransactionsResult.error) ? legacyTransactionsResult.error : null,
     ].find(Boolean);
     if (firstError) return handleCloudError(firstError);
 
@@ -220,6 +223,7 @@ export function createSupabaseModule(deps) {
     const budgets = budgetsResult.data || [];
     const goals = goalsResult.data || [];
     const txRows = transactionsResult.data || [];
+    const legacyRows = legacyTransactionsResult.data || [];
 
     if (options.silent && !txRows.length && !categories.length && state.transactions.length) {
       renderCloudStatus();
@@ -232,10 +236,21 @@ export function createSupabaseModule(deps) {
       tagById: new Map(categoryTags.map((item) => [item.id, item])),
     };
 
-    state.catalog = buildCatalogFromV2({ accounts, creditCards, categories, categoryTags, budgets, goals });
+    state.catalog = ensureCatalogCoversTransactions(
+      buildCatalogFromV2({ accounts, creditCards, categories, categoryTags, budgets, goals }),
+      legacyRows
+    );
     state.dataMode = "v2";
     deps.syncSettingsFromCatalog();
+    const legacyById = new Map(legacyRows.map((item) => [item.id, item]));
     state.transactions = txRows.map((row) => fromV2Transaction(row, refs));
+    state.transactions.forEach((item) => {
+      const legacy = legacyById.get(item.id);
+      if (!legacy) return;
+      if ((item.category === "outros" || !item.category) && legacy.cat) item.category = legacy.cat;
+      if (!item.subcategory && legacy.subcat) item.subcategory = legacy.subcat;
+      if (!item.type && legacy.type) item.type = legacy.type;
+    });
     deps.save();
     deps.updateCategoryOptions();
     deps.updateAccountOptions();
@@ -247,7 +262,11 @@ export function createSupabaseModule(deps) {
 
   async function syncSettingsToV2(userId) {
     const client = state.supabaseClient;
-    const catalog = state.catalog || deps.hydrateCatalog(state.settings, state.catalog);
+    const catalog = ensureCatalogCoversTransactions(
+      state.catalog || deps.hydrateCatalog(state.settings, state.catalog),
+      state.transactions
+    );
+    state.catalog = catalog;
 
     const accountRows = catalog.accounts.map((account) => ({
       user_id: userId,
