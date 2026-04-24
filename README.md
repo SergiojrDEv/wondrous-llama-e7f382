@@ -26,8 +26,16 @@ O app ja tem fallback para o projeto Supabase `gxwukctgfrquureyerli` usando a pu
 
 - `index.html`: estrutura das telas e secoes do app.
 - `src/styles.css`: layout, tema visual e responsividade.
-- `src/app.js`: regras de negocio, persistencia local, graficos, filtros e exportacao.
-- `docs/supabase-schema.sql`: estrutura SQL opcional para uma futura integracao com Supabase.
+- `src/app.js`: ponto de entrada da aplicacao.
+- `src/core`: estado global, utilitarios, persistencia local e UI base.
+- `src/auth`: autenticacao e fluxos de acesso.
+- `src/transactions`: lancamentos, tabela, importacao e exportacao.
+- `src/dashboard`: resumo, insights, historicos e graficos.
+- `src/settings`: categorias, contas, cartoes, metas e etiquetas.
+- `src/supabase`: configuracao, sync e integracao com Supabase.
+- `docs/supabase-schema.sql`: schema atual, compativel com a versao em producao.
+- `docs/supabase-schema-v2.sql`: schema relacional alvo para a proxima fase.
+- `docs/supabase-migration-v2.md`: ordem segura para migrar sem perder dados.
 - `functions/api/config.js`: endpoint para Cloudflare Pages entregar as variaveis publicas do Supabase.
 - `netlify.toml` e `netlify/functions/config.js`: compatibilidade com deploy no Netlify.
 
@@ -52,6 +60,8 @@ O app ja tem fallback para o projeto Supabase `gxwukctgfrquureyerli` usando a pu
 
 ## Proximos passos sugeridos
 
+- Migrar do schema atual para o schema V2 relacional.
+- Criar backend modular para auth, transacoes, planejamento e cartoes.
 - Melhorar relatorios de faturas de cartao.
 - Criar testes automatizados para importacao, parcelas e sincronizacao.
-- Separar regras de negocio em modulos caso o app cresca.
+- Reduzir a dependencia de `localStorage` para dados sensiveis.
