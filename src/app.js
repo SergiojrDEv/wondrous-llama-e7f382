@@ -51,96 +51,92 @@ Object.assign(deps, createAuthModule(deps));
 Object.assign(deps, createSupabaseModule(deps));
 
 function bindEvents() {
-  const on = (selector, eventName, handler) => {
-    document.querySelector(selector)?.addEventListener(eventName, handler);
-  };
-
-  on("#prev-month", "click", () => {
+  document.querySelector("#prev-month").addEventListener("click", () => {
     state.currentDate = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth() - 1, 1);
     deps.renderAll();
   });
-  on("#next-month", "click", () => {
+  document.querySelector("#next-month").addEventListener("click", () => {
     state.currentDate = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth() + 1, 1);
     deps.renderAll();
   });
-  on("#open-transaction", "click", () => {
+  document.querySelector("#open-transaction").addEventListener("click", () => {
     location.hash = "novo-lancamento";
     setSectionFromHash();
     document.querySelector("#description").focus();
   });
-  on("#go-to-new-transaction", "click", () => {
+  document.querySelector("#go-to-new-transaction").addEventListener("click", () => {
     location.hash = "novo-lancamento";
     setSectionFromHash();
     document.querySelector("#description").focus();
     document.querySelector("#transaction-form").scrollIntoView({ behavior: "smooth", block: "start" });
   });
-  on("#go-to-month-transactions", "click", () => {
+  document.querySelector("#go-to-month-transactions").addEventListener("click", () => {
     location.hash = "lancamentos-mes";
     setSectionFromHash();
   });
-  on("#seed-data", "click", deps.seedData);
-  on("#install-app", "click", deps.promptInstallApp);
+  document.querySelector("#seed-data").addEventListener("click", deps.seedData);
+  document.querySelector("#install-app").addEventListener("click", deps.promptInstallApp);
   document.querySelectorAll(".segment").forEach((button) =>
     button.addEventListener("click", () => deps.setActiveType(button.dataset.type))
   );
   els.form.addEventListener("submit", deps.addTransaction);
-  on("#category-form", "submit", deps.addCategory);
-  on("#account-form", "submit", deps.addAccount);
-  on("#card-form", "submit", deps.addCreditCard);
-  on("#subcategory-form", "submit", deps.addSubcategory);
-  on("#goal-form", "submit", deps.addGoal);
-  on("#login-form", "submit", deps.signInSupabase);
-  on("#login-reset", "click", () => {
+  document.querySelector("#category-form").addEventListener("submit", deps.addCategory);
+  document.querySelector("#account-form").addEventListener("submit", deps.addAccount);
+  document.querySelector("#card-form").addEventListener("submit", deps.addCreditCard);
+  document.querySelector("#subcategory-form").addEventListener("submit", deps.addSubcategory);
+  document.querySelector("#goal-form").addEventListener("submit", deps.addGoal);
+  document.querySelector("#login-form").addEventListener("submit", deps.signInSupabase);
+  document.querySelector("#login-reset").addEventListener("click", () => {
     document.querySelector("#reset-email").value = document.querySelector("#login-email").value.trim();
     deps.showAuthView("reset");
   });
-  on("#login-create", "click", () => deps.showAuthView("signup"));
-  on("#signup-back", "click", () => deps.showAuthView("login"));
-  on("#reset-back", "click", () => deps.showAuthView("login"));
-  on("#update-password-back", "click", () => {
+  document.querySelector("#login-create").addEventListener("click", () => deps.showAuthView("signup"));
+  document.querySelector("#signup-back").addEventListener("click", () => deps.showAuthView("login"));
+  document.querySelector("#reset-back").addEventListener("click", () => deps.showAuthView("login"));
+  document.querySelector("#update-password-back").addEventListener("click", () => {
     location.hash = "";
     deps.showAuthView("login");
   });
-  on("#signup-form", "submit", (event) => {
+  document.querySelector("#signup-form").addEventListener("submit", (event) => {
     event.preventDefault();
     deps.signUpSupabase();
   });
-  on("#reset-form", "submit", deps.requestPasswordReset);
-  on("#update-password-form", "submit", deps.updatePassword);
-  on("#goal-modal-form", "submit", deps.saveGoalFromModal);
-  on("#goal-modal-close", "click", deps.closeGoalModal);
-  on("#goal-modal-cancel", "click", deps.closeGoalModal);
-  on("#goal-modal-overlay", "click", (event) => {
+  document.querySelector("#reset-form").addEventListener("submit", deps.requestPasswordReset);
+  document.querySelector("#update-password-form").addEventListener("submit", deps.updatePassword);
+  document.querySelector("#goal-modal-form").addEventListener("submit", deps.saveGoalFromModal);
+  document.querySelector("#goal-modal-close").addEventListener("click", deps.closeGoalModal);
+  document.querySelector("#goal-modal-cancel").addEventListener("click", deps.closeGoalModal);
+  document.querySelector("#goal-modal-overlay").addEventListener("click", (event) => {
     if (event.target.id === "goal-modal-overlay") deps.closeGoalModal();
   });
-  on("#settings-item-modal-form", "submit", deps.saveSettingsItemFromModal);
-  on("#settings-item-modal-close", "click", deps.closeSettingsItemModal);
-  on("#settings-item-modal-cancel", "click", deps.closeSettingsItemModal);
-  on("#settings-item-modal-overlay", "click", (event) => {
+  document.querySelector("#settings-item-modal-form").addEventListener("submit", deps.saveSettingsItemFromModal);
+  document.querySelector("#settings-item-modal-close").addEventListener("click", deps.closeSettingsItemModal);
+  document.querySelector("#settings-item-modal-cancel").addEventListener("click", deps.closeSettingsItemModal);
+  document.querySelector("#settings-item-modal-overlay").addEventListener("click", (event) => {
     if (event.target.id === "settings-item-modal-overlay") deps.closeSettingsItemModal();
   });
-  on("#transaction-modal-form", "submit", deps.saveTransactionFromModal);
-  on("#transaction-modal-close", "click", deps.closeTransactionModal);
-  on("#transaction-modal-cancel", "click", deps.closeTransactionModal);
-  on("#transaction-modal-overlay", "click", (event) => {
+  document.querySelector("#transaction-modal-form").addEventListener("submit", deps.saveTransactionFromModal);
+  document.querySelector("#transaction-modal-close").addEventListener("click", deps.closeTransactionModal);
+  document.querySelector("#transaction-modal-cancel").addEventListener("click", deps.closeTransactionModal);
+  document.querySelector("#transaction-modal-overlay").addEventListener("click", (event) => {
     if (event.target.id === "transaction-modal-overlay") deps.closeTransactionModal();
   });
   document.querySelectorAll(".transaction-modal-segment").forEach((button) => {
     button.addEventListener("click", () => deps.setTransactionModalType(button.dataset.modalType));
   });
-  on("#transaction-modal-payment-method", "change", deps.updateTransactionModalCreditFields);
-  on("#transaction-modal-category", "change", () => deps.updateTransactionModalSubcategoryOptions());
-  on("#signup-cpf", "input", (event) => {
+  document.querySelector("#transaction-modal-payment-method").addEventListener("change", deps.updateTransactionModalCreditFields);
+  document.querySelector("#transaction-modal-category").addEventListener("change", () => deps.updateTransactionModalSubcategoryOptions());
+  document.querySelector("#signup-cpf").addEventListener("input", (event) => {
     event.target.value = formatCpf(event.target.value);
   });
-  on("#signup-phone", "input", (event) => {
+  document.querySelector("#signup-phone").addEventListener("input", (event) => {
     event.target.value = formatPhone(event.target.value);
   });
-  on("#payment-method", "change", deps.updateCreditPaymentFields);
-  on("#category", "change", () => deps.updateSubcategoryOptions());
-  on("#new-subcategory-type", "change", deps.renderSubcategoryParentOptions);
-  on("#logout-btn", "click", deps.signOutSupabase);
-  on("#cancel-edit", "click", deps.resetTransactionForm);
+  document.querySelector("#payment-method").addEventListener("change", deps.updateCreditPaymentFields);
+  document.querySelector("#category").addEventListener("change", () => deps.updateSubcategoryOptions());
+  document.querySelector("#new-subcategory-type").addEventListener("change", deps.renderSubcategoryParentOptions);
+  document.querySelector("#logout-btn").addEventListener("click", deps.signOutSupabase);
+  document.querySelector("#cancel-edit").addEventListener("click", deps.resetTransactionForm);
   els.search.addEventListener("input", (event) => {
     state.search = event.target.value;
     deps.renderTable();
@@ -157,20 +153,20 @@ function bindEvents() {
     if (editButton) deps.editTransaction(editButton.dataset.edit);
     if (paidButton) deps.markTransactionPaid(paidButton.dataset.paid);
   });
-  on("#export-csv", "click", deps.exportCsv);
-  on("#export-json", "click", deps.exportJson);
-  on("#clear-data", "click", () => {
+  document.querySelector("#export-csv").addEventListener("click", deps.exportCsv);
+  document.querySelector("#export-json").addEventListener("click", deps.exportJson);
+  document.querySelector("#clear-data").addEventListener("click", () => {
     if (!confirm("Limpar todos os dados salvos neste navegador?")) return;
     state.transactions = [];
     deps.persist();
     deps.renderAll();
     deps.notify("Dados limpos.");
   });
-  on("#budget-list", "submit", (event) => {
+  document.querySelector("#budget-list").addEventListener("submit", (event) => {
     const form = event.target.closest(".budget-rule-form");
     if (form) deps.saveBudgetRule(event);
   });
-  on("#import-json", "change", async (event) => {
+  document.querySelector("#import-json").addEventListener("change", async (event) => {
     const [file] = event.target.files;
     if (!file) return;
     try {
@@ -183,7 +179,7 @@ function bindEvents() {
       event.target.value = "";
     }
   });
-  on("#import-preview", "click", (event) => {
+  document.querySelector("#import-preview").addEventListener("click", (event) => {
     const button = event.target.closest("[data-import-action]");
     if (!button) return;
     const action = button.dataset.importAction;
@@ -194,7 +190,7 @@ function bindEvents() {
     }
     deps.applyPendingImport(action);
   });
-  on("#category-manage-list", "click", (event) => {
+  document.querySelector("#category-manage-list").addEventListener("click", (event) => {
     const removeButton = event.target.closest("[data-remove-category]");
     const editButton = event.target.closest("[data-edit-category]");
     if (removeButton) {
@@ -217,7 +213,7 @@ function bindEvents() {
       });
     }
   });
-  on("#account-manage-list", "click", (event) => {
+  document.querySelector("#account-manage-list").addEventListener("click", (event) => {
     const removeButton = event.target.closest("[data-remove-account]");
     const editButton = event.target.closest("[data-edit-account]");
     if (removeButton) deps.removeAccount(Number(removeButton.dataset.removeAccount));
@@ -232,7 +228,7 @@ function bindEvents() {
       });
     }
   });
-  on("#card-manage-list", "click", (event) => {
+  document.querySelector("#card-manage-list").addEventListener("click", (event) => {
     const removeButton = event.target.closest("[data-remove-card]");
     const editButton = event.target.closest("[data-edit-card]");
     if (removeButton) deps.removeCreditCard(Number(removeButton.dataset.removeCard));
@@ -251,7 +247,7 @@ function bindEvents() {
       });
     }
   });
-  on("#goal-manage-list", "click", (event) => {
+  document.querySelector("#goal-manage-list").addEventListener("click", (event) => {
     const saveButton = event.target.closest("[data-save-goal]");
     const removeButton = event.target.closest("[data-remove-goal]");
     if (saveButton) {
@@ -262,7 +258,7 @@ function bindEvents() {
       deps.removeGoal(Number(removeButton.dataset.removeGoal));
     }
   });
-  on("#subcategory-manage-list", "click", (event) => {
+  document.querySelector("#subcategory-manage-list").addEventListener("click", (event) => {
     const removeButton = event.target.closest("[data-remove-subcategory]");
     const editButton = event.target.closest("[data-edit-subcategory]");
     if (removeButton) {
@@ -285,7 +281,7 @@ function bindEvents() {
       });
     }
   });
-  on("#subcategory-manage-list", "submit", (event) => {
+  document.querySelector("#subcategory-manage-list").addEventListener("submit", (event) => {
     const form = event.target.closest("[data-subcategory-inline]");
     if (!form) return;
     event.preventDefault();
@@ -293,13 +289,13 @@ function bindEvents() {
     const name = new FormData(form).get("name");
     deps.addInlineSubcategory(type, categoryKey, String(name || ""));
   });
-  on("#settings-manage-switcher", "click", (event) => {
+  document.querySelector("#settings-manage-switcher").addEventListener("click", (event) => {
     const button = event.target.closest("[data-manage-view]");
     if (!button) return;
     state.manageView = button.dataset.manageView;
     deps.renderManagePanels();
   });
-  on("#goals-list", "click", (event) => {
+  document.querySelector("#goals-list").addEventListener("click", (event) => {
     const contributeButton = event.target.closest("[data-goal-contribute]");
     const editButton = event.target.closest("[data-goal-edit-card]");
     if (contributeButton) {
