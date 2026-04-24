@@ -43,6 +43,7 @@ const deps = {
 Object.assign(deps, createUiModule(deps));
 Object.assign(deps, createStorageModule(deps));
 state.settings = deps.mergeSettings();
+state.catalog = deps.hydrateCatalog(state.settings, state.catalog);
 Object.assign(deps, createTransactionsModule(deps));
 Object.assign(deps, createSettingsModule(deps));
 Object.assign(deps, createDashboardModule(deps));
@@ -198,7 +199,7 @@ function bindEvents() {
     }
     if (editButton) {
       const [type, key] = editButton.dataset.editCategory.split(":");
-      const item = state.settings.categories[type].find(([itemKey]) => itemKey === key);
+      const item = deps.getCategoryRecord(type, key);
       if (!item) return;
       deps.openSettingsItemModal({
         kind: "category",
@@ -206,9 +207,9 @@ function bindEvents() {
         title: "Editar categoria",
         type,
         key,
-        name: item[1],
-        color: item[2],
-        limit: deps.getBudgetRule(key).monthly || item[3] || 0,
+        name: item.name,
+        color: item.color,
+        limit: deps.getBudgetRule(key).monthly || item.monthlyLimit || 0,
       });
     }
   });
@@ -223,7 +224,7 @@ function bindEvents() {
         kicker: "Contas",
         title: "Editar conta",
         index,
-        name: state.settings.accounts[index] || "",
+        name: deps.getAccountRecord(index)?.name || "",
       });
     }
   });
@@ -233,7 +234,7 @@ function bindEvents() {
     if (removeButton) deps.removeCreditCard(Number(removeButton.dataset.removeCard));
     if (editButton) {
       const index = Number(editButton.dataset.editCard);
-      const card = state.settings.creditCards[index];
+      const card = deps.getCardRecord(index);
       if (!card) return;
       deps.openSettingsItemModal({
         kind: "card",
@@ -254,10 +255,7 @@ function bindEvents() {
       return;
     }
     if (removeButton) {
-      state.settings.goals.splice(Number(removeButton.dataset.removeGoal), 1);
-      deps.persist();
-      deps.renderAll();
-      deps.notify("Meta removida.");
+      deps.removeGoal(Number(removeButton.dataset.removeGoal));
     }
   });
   document.querySelector("#subcategory-manage-list").addEventListener("click", (event) => {
@@ -269,7 +267,7 @@ function bindEvents() {
     }
     if (editButton) {
       const [type, categoryKey, subKey] = editButton.dataset.editSubcategory.split(":");
-      const item = deps.getSubcategories(type, categoryKey).find(([key]) => key === subKey);
+      const item = deps.getTagRecord(type, categoryKey, subKey);
       if (!item) return;
       deps.openSettingsItemModal({
         kind: "tag",
@@ -278,8 +276,8 @@ function bindEvents() {
         type,
         categoryKey,
         subKey,
-        name: item[1],
-        color: item[2] || deps.getCategoryColorFromList(type, categoryKey, state.settings.categories),
+        name: item.name,
+        color: item.color || deps.getCategoryColorFromList(type, categoryKey, state.settings.categories),
       });
     }
   });

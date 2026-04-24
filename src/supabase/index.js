@@ -1,4 +1,5 @@
 import { SUPABASE_FALLBACK_CONFIG, state } from "../core/state.js";
+import { buildCatalogFromV2 } from "../core/catalog.js";
 
 export function createSupabaseModule(deps) {
   function isMissingRelationError(error) {
@@ -154,61 +155,6 @@ export function createSupabaseModule(deps) {
     throw error;
   }
 
-  function buildSettingsFromV2({ accounts, creditCards, categories, categoryTags, budgets, goals }) {
-    const nextSettings = deps.mergeSettings({});
-    nextSettings.accounts = accounts.map((item) => item.name);
-    nextSettings.creditCards = creditCards.map((item) => ({
-      id: item.id,
-      name: item.name,
-      closingDay: item.closing_day,
-      dueDay: item.due_day,
-    }));
-
-    const categoryGroups = { expense: [], income: [], investment: [] };
-    categories.forEach((item) => {
-      const row = [item.slug, item.name, item.color || "#667085"];
-      if (item.kind === "expense") row.push(Number(item.monthly_limit || 0));
-      categoryGroups[item.kind].push(row);
-    });
-    nextSettings.categories = categoryGroups;
-
-    const categoryById = new Map(categories.map((item) => [item.id, item]));
-    const subcategories = { expense: {}, income: {}, investment: {} };
-    categoryTags.forEach((item) => {
-      const category = categoryById.get(item.category_id);
-      if (!category) return;
-      subcategories[category.kind][category.slug] ||= [];
-      subcategories[category.kind][category.slug].push([
-        item.slug,
-        item.name,
-        item.color || category.color || "#667085",
-      ]);
-    });
-    nextSettings.subcategories = deps.mergeSubcategories(subcategories, categoryGroups);
-
-    const budgetRules = {};
-    budgets.forEach((item) => {
-      const category = categoryById.get(item.category_id);
-      if (!category || category.kind !== "expense") return;
-      budgetRules[category.slug] ||= { weekly: 0, monthly: 0 };
-      budgetRules[category.slug][item.period_kind] = Number(item.amount || 0);
-    });
-    nextSettings.budgetRules = deps.mergeBudgetRules(budgetRules, categoryGroups.expense);
-
-    nextSettings.goals = goals.map((item) => {
-      const category = categoryById.get(item.linked_category_id);
-      return {
-        name: item.name,
-        target: Number(item.target_amount || 0),
-        key: category?.slug || "renda-fixa",
-      };
-    });
-
-    if (!nextSettings.accounts.length) nextSettings.accounts = ["Conta corrente"];
-    if (!nextSettings.creditCards.length) nextSettings.creditCards = [];
-    return nextSettings;
-  }
-
   function fromV2Transaction(row, refs) {
     const category = refs.categoryById.get(row.category_id);
     const tag = refs.tagById.get(row.category_tag_id);
@@ -286,7 +232,9 @@ export function createSupabaseModule(deps) {
       tagById: new Map(categoryTags.map((item) => [item.id, item])),
     };
 
-    state.settings = buildSettingsFromV2({ accounts, creditCards, categories, categoryTags, budgets, goals });
+    state.catalog = buildCatalogFromV2({ accounts, creditCards, categories, categoryTags, budgets, goals });
+    state.dataMode = "v2";
+    deps.syncSettingsFromCatalog();
     state.transactions = txRows.map((row) => fromV2Transaction(row, refs));
     deps.save();
     deps.updateCategoryOptions();
@@ -299,12 +247,13 @@ export function createSupabaseModule(deps) {
 
   async function syncSettingsToV2(userId) {
     const client = state.supabaseClient;
+    const catalog = state.catalog || deps.hydrateCatalog(state.settings, state.catalog);
 
-    const accountRows = state.settings.accounts.map((name) => ({
+    const accountRows = catalog.accounts.map((account) => ({
       user_id: userId,
-      name,
-      kind: inferAccountKind(name),
-      color: "#0b7285",
+      name: account.name,
+      kind: account.kind || inferAccountKind(account.name),
+      color: account.color || "#0b7285",
       is_archived: false,
       updated_at: new Date().toISOString(),
     }));
@@ -319,7 +268,7 @@ export function createSupabaseModule(deps) {
       .eq("user_id", userId);
     if (accountsFetchError) throw accountsFetchError;
 
-    const activeAccountNames = new Set(state.settings.accounts.map((item) => item.toLowerCase()));
+    const activeAccountNames = new Set(catalog.accounts.map((item) => item.name.toLowerCase()));
     const staleAccountIds = (existingAccounts || [])
       .filter((item) => !activeAccountNames.has(String(item.name).toLowerCase()))
       .map((item) => item.id);
@@ -328,18 +277,16 @@ export function createSupabaseModule(deps) {
       if (error) throw error;
     }
 
-    const categoryRows = Object.entries(state.settings.categories).flatMap(([kind, items]) =>
-      items.map(([slug, name, color, monthlyLimit]) => ({
+    const categoryRows = catalog.categories.map((item) => ({
         user_id: userId,
-        kind,
-        slug,
-        name,
-        color: color || "#667085",
-        monthly_limit: kind === "expense" ? Number(monthlyLimit || 0) : null,
+        kind: item.kind,
+        slug: item.slug,
+        name: item.name,
+        color: item.color || "#667085",
+        monthly_limit: item.kind === "expense" ? Number(item.monthlyLimit || 0) : null,
         is_archived: false,
         updated_at: new Date().toISOString(),
-      }))
-    );
+      }));
     if (categoryRows.length) {
       const { error } = await client.from("categories").upsert(categoryRows, { onConflict: "user_id,kind,slug" });
       if (error) throw error;
@@ -368,23 +315,18 @@ export function createSupabaseModule(deps) {
     if (freshCategoriesError) throw freshCategoriesError;
     const categoryKeyToId = new Map((freshCategories || []).map((item) => [`${item.kind}:${item.slug}`, item]));
 
-    const tagRows = [];
-    Object.entries(state.settings.subcategories || {}).forEach(([kind, categoryGroups]) => {
-      Object.entries(categoryGroups || {}).forEach(([categorySlug, tags]) => {
-        const category = categoryKeyToId.get(`${kind}:${categorySlug}`);
-        if (!category) return;
-        (tags || []).forEach(([slug, name, color]) => {
-          tagRows.push({
-            user_id: userId,
-            category_id: category.id,
-            slug,
-            name,
-            color: color || category.color || "#667085",
-            is_archived: false,
-            updated_at: new Date().toISOString(),
-          });
-        });
-      });
+    const tagRows = catalog.tags.flatMap((item) => {
+      const category = categoryKeyToId.get(`${item.kind}:${item.categorySlug}`);
+      if (!category) return [];
+      return [{
+        user_id: userId,
+        category_id: category.id,
+        slug: item.slug,
+        name: item.name,
+        color: item.color || category.color || "#667085",
+        is_archived: false,
+        updated_at: new Date().toISOString(),
+      }];
     });
     if (tagRows.length) {
       const { error } = await client.from("category_tags").upsert(tagRows, { onConflict: "user_id,category_id,slug" });
@@ -405,11 +347,11 @@ export function createSupabaseModule(deps) {
       if (error) throw error;
     }
 
-    const creditCardRows = state.settings.creditCards.map((card) => ({
+    const creditCardRows = catalog.creditCards.map((card) => ({
       id: card.id,
       user_id: userId,
       name: card.name,
-      color: "#635bff",
+      color: card.color || "#635bff",
       closing_day: Number(card.closingDay || 25),
       due_day: Number(card.dueDay || 10),
       is_archived: false,
@@ -420,7 +362,7 @@ export function createSupabaseModule(deps) {
       if (error) throw error;
     }
 
-    const activeCardIds = new Set(state.settings.creditCards.map((item) => item.id));
+    const activeCardIds = new Set(catalog.creditCards.map((item) => item.id));
     const { data: existingCards, error: cardsFetchError } = await client
       .from("credit_cards")
       .select("id")
@@ -432,13 +374,17 @@ export function createSupabaseModule(deps) {
       if (error) throw error;
     }
 
-    const budgetRows = Object.entries(state.settings.budgetRules || {}).flatMap(([slug, values]) => {
-      const category = categoryKeyToId.get(`expense:${slug}`);
+    const budgetRows = catalog.budgets.flatMap((item) => {
+      const category = categoryKeyToId.get(`expense:${item.categorySlug}`);
       if (!category) return [];
-      return [
-        { user_id: userId, category_id: category.id, period_kind: "weekly", amount: Number(values.weekly || 0), starts_on: new Date().toISOString().slice(0, 10), updated_at: new Date().toISOString() },
-        { user_id: userId, category_id: category.id, period_kind: "monthly", amount: Number(values.monthly || 0), starts_on: new Date().toISOString().slice(0, 10), updated_at: new Date().toISOString() },
-      ];
+      return [{
+        user_id: userId,
+        category_id: category.id,
+        period_kind: item.periodKind,
+        amount: Number(item.amount || 0),
+        starts_on: new Date().toISOString().slice(0, 10),
+        updated_at: new Date().toISOString(),
+      }];
     });
     const { error: deleteBudgetsError } = await client.from("budgets").delete().eq("user_id", userId);
     if (deleteBudgetsError) throw deleteBudgetsError;
@@ -447,13 +393,13 @@ export function createSupabaseModule(deps) {
       if (error) throw error;
     }
 
-    const goalRows = state.settings.goals.map((goal) => ({
+    const goalRows = catalog.goals.map((goal) => ({
       user_id: userId,
       name: goal.name,
       target_amount: Number(goal.target || 0),
-      current_amount: 0,
+      current_amount: Number(goal.currentAmount || 0),
       linked_category_id: categoryKeyToId.get(`investment:${goal.key}`)?.id || null,
-      color: "#635bff",
+      color: goal.color || "#635bff",
       updated_at: new Date().toISOString(),
     }));
     const { error: deleteGoalsError } = await client.from("goals").delete().eq("user_id", userId);
@@ -543,6 +489,7 @@ export function createSupabaseModule(deps) {
 
     if (supportsV2) {
       try {
+        deps.syncSettingsFromCatalog();
         const refs = await syncSettingsToV2(userId);
         await syncTransactionsToV2(userId, refs);
       } catch (error) {
@@ -627,7 +574,11 @@ export function createSupabaseModule(deps) {
     }
 
     state.transactions = (txRows || []).map(fromRemoteTransaction);
-    if (settingsRow?.settings) state.settings = deps.mergeSettings(settingsRow.settings);
+    if (settingsRow?.settings) {
+      state.settings = deps.mergeSettings(settingsRow.settings);
+      deps.hydrateCatalog(state.settings, state.catalog);
+      state.dataMode = "legacy";
+    }
     deps.save();
     deps.updateCategoryOptions();
     deps.updateAccountOptions();

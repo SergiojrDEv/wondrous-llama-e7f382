@@ -66,6 +66,7 @@ export const defaultSettings = {
 export const state = {
   transactions: [],
   settings: null,
+  catalog: null,
   currentDate: new Date(),
   deferredInstallPrompt: null,
   manageView: "categories",
@@ -87,6 +88,7 @@ export const state = {
   activeGoalEditIndex: null,
   activeTransactionEditId: null,
   transactionModalType: "expense",
+  dataMode: "legacy",
 };
 
 export const els = {

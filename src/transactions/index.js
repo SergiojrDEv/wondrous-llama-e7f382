@@ -455,6 +455,7 @@ export function createTransactionsModule(deps) {
     return {
       transactions,
       settings,
+      catalog: imported.catalog || null,
       ignored: rows.length - transactions.length,
       total: rows.length,
     };
@@ -492,11 +493,15 @@ export function createTransactionsModule(deps) {
     if (mode === "replace") {
       state.transactions = imported.transactions;
       state.settings = imported.settings;
+      state.catalog = imported.catalog || deps.hydrateCatalog(state.settings, state.catalog);
+      deps.syncSettingsFromCatalog();
     } else {
       const byId = new Map(state.transactions.map((item) => [item.id, item]));
       imported.transactions.forEach((item) => byId.set(item.id, item));
       state.transactions = Array.from(byId.values());
       state.settings = deps.mergeSettings(imported.settings);
+      state.catalog = imported.catalog ? deps.hydrateCatalog(imported.settings, imported.catalog) : deps.hydrateCatalog(state.settings, state.catalog);
+      deps.syncSettingsFromCatalog();
     }
     deps.persist();
     updateCategoryOptions();
@@ -541,7 +546,7 @@ export function createTransactionsModule(deps) {
   function exportJson() {
     download(
       "finance-flow-backup.json",
-      JSON.stringify({ transactions: state.transactions, settings: state.settings }, null, 2),
+      JSON.stringify({ transactions: state.transactions, settings: state.settings, catalog: state.catalog }, null, 2),
       "application/json"
     );
   }

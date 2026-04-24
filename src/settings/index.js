@@ -3,30 +3,104 @@ import {
   createId,
   esc,
   getBudgetRule,
-  getCategory,
   getCategoryColorFromList,
-  getSubcategories,
   money,
   slugify,
-  syncCategoryMonthlyLimit,
 } from "../core/utils.js";
 
 export function createSettingsModule(deps) {
+  function getCatalog() {
+    return state.catalog || deps.hydrateCatalog(state.settings, state.catalog);
+  }
+
+  function getCategoriesByType(type) {
+    return getCatalog().categories.filter((item) => item.kind === type && !item.isArchived);
+  }
+
+  function getCategoryRecord(type, slug) {
+    return getCategoriesByType(type).find((item) => item.slug === slug) || null;
+  }
+
+  function getAccounts() {
+    return getCatalog().accounts.filter((item) => !item.isArchived);
+  }
+
+  function getAccountRecord(index) {
+    return getAccounts()[index] || null;
+  }
+
+  function getCards() {
+    return getCatalog().creditCards.filter((item) => !item.isArchived);
+  }
+
+  function getCardRecord(index) {
+    return getCards()[index] || null;
+  }
+
+  function getGoals() {
+    return getCatalog().goals.filter((item) => !item.isArchived);
+  }
+
+  function getGoalRecord(index) {
+    return getGoals()[index] || null;
+  }
+
+  function getTags(type, categorySlug) {
+    return getCatalog().tags.filter((item) => item.kind === type && item.categorySlug === categorySlug && !item.isArchived);
+  }
+
+  function getTagRecord(type, categorySlug, slug) {
+    return getTags(type, categorySlug).find((item) => item.slug === slug) || null;
+  }
+
+  function getBudgetValue(categorySlug, periodKind) {
+    const budget = getCatalog().budgets.find((item) => item.categorySlug === categorySlug && item.periodKind === periodKind);
+    return Number(budget?.amount || 0);
+  }
+
+  function upsertBudget(categorySlug, periodKind, amount) {
+    const catalog = getCatalog();
+    const current = catalog.budgets.find((item) => item.categorySlug === categorySlug && item.periodKind === periodKind);
+    if (current) {
+      current.amount = Number(amount || 0);
+      return;
+    }
+    catalog.budgets.push({
+      id: `${categorySlug}:${periodKind}`,
+      categorySlug,
+      periodKind,
+      amount: Number(amount || 0),
+    });
+  }
+
+  function commitCatalogChanges(message) {
+    deps.syncSettingsFromCatalog();
+    deps.persist();
+    deps.updateCategoryOptions();
+    deps.updateAccountOptions();
+    deps.updateCreditCardOptions();
+    deps.updateTransactionModalAccounts();
+    deps.updateTransactionModalCategories(state.transactionModalType);
+    deps.renderAll();
+    if (message) deps.notify(message);
+  }
+
   function renderGoals() {
     const investments = state.transactions.filter((item) => item.type === "investment");
     const target = document.querySelector("#goals-list");
-    if (!state.settings.goals.length) {
+    const goals = getGoals();
+    if (!goals.length) {
       target.innerHTML = '<article class="goal-card empty-state">Nenhuma meta criada ainda.</article>';
       return;
     }
 
-    target.innerHTML = state.settings.goals
+    target.innerHTML = goals
       .map((goal, index) => {
         const current = investments
           .filter((item) => item.category === goal.key)
-          .reduce((sum, item) => sum + Number(item.amount), 0);
+          .reduce((sum, item) => sum + Number(item.amount), 0) || Number(goal.currentAmount || 0);
         const pct = Math.min((current / goal.target) * 100, 100);
-        const category = getCategory("investment", goal.key);
+        const category = getCategoryRecord("investment", goal.key) || { name: goal.key };
         return `
           <article class="goal-card">
             <header>
@@ -35,7 +109,7 @@ export function createSettingsModule(deps) {
             </header>
             <div class="bar"><span style="--value:${pct}%;--color:var(--invest)"></span></div>
             <p><span class="money purple">${money(current)}</span> de ${money(goal.target)}</p>
-            <small class="goal-card-note">Categoria: ${esc(category[1])}</small>
+            <small class="goal-card-note">Categoria: ${esc(category.name)}</small>
             <div class="goal-card-actions">
               <button class="mini-btn" type="button" data-goal-contribute="${index}">Lancar aporte</button>
               <button class="mini-btn" type="button" data-goal-edit-card="${index}">Editar meta</button>
@@ -51,10 +125,10 @@ export function createSettingsModule(deps) {
     if (!target) return;
 
     const investments = state.transactions.filter((item) => item.type === "investment");
-    const totals = state.settings.goals.map((goal) => {
+    const totals = getGoals().map((goal) => {
       const current = investments
         .filter((item) => item.category === goal.key)
-        .reduce((sum, item) => sum + Number(item.amount), 0);
+        .reduce((sum, item) => sum + Number(item.amount), 0) || Number(goal.currentAmount || 0);
       return { goal, current };
     });
 
@@ -70,7 +144,7 @@ export function createSettingsModule(deps) {
     target.innerHTML = `
       <article class="mini-stat-card">
         <span>Metas ativas</span>
-        <strong>${state.settings.goals.length}</strong>
+        <strong>${getGoals().length}</strong>
         <small>${money(totalTarget)} planejados</small>
       </article>
       <article class="mini-stat-card">
@@ -87,14 +161,15 @@ export function createSettingsModule(deps) {
   }
 
   function openGoalContribution(index) {
-    const goal = state.settings.goals[index];
+    const goal = getGoalRecord(index);
     if (!goal) return;
     location.hash = "novo-lancamento";
     deps.setSectionFromHash();
     deps.setActiveType("investment");
     deps.updateCategoryOptions();
     document.querySelector("#category").value = goal.key;
-    document.querySelector("#account").value = state.settings.accounts.includes("Corretora") ? "Corretora" : state.settings.accounts[0];
+    const accountNames = getAccounts().map((item) => item.name);
+    document.querySelector("#account").value = accountNames.includes("Corretora") ? "Corretora" : accountNames[0];
     document.querySelector("#payment-method").value = "transfer";
     deps.updateCreditPaymentFields();
     document.querySelector("#description").value = `Aporte - ${goal.name}`;
@@ -105,7 +180,7 @@ export function createSettingsModule(deps) {
   }
 
   function editGoalFromCard(index) {
-    const goal = state.settings.goals[index];
+    const goal = getGoalRecord(index);
     if (!goal) return;
     state.activeGoalEditIndex = index;
     document.querySelector("#goal-modal-name").value = goal.name;
@@ -126,7 +201,7 @@ export function createSettingsModule(deps) {
   function saveGoalFromModal(event) {
     event.preventDefault();
     const index = state.activeGoalEditIndex;
-    const goal = state.settings.goals[index];
+    const goal = getGoalRecord(index);
     if (!goal) return closeGoalModal();
 
     const name = document.querySelector("#goal-modal-name").value.trim();
@@ -137,10 +212,8 @@ export function createSettingsModule(deps) {
     goal.name = name;
     goal.key = key;
     goal.target = target;
-    deps.persist();
-    deps.renderAll();
+    commitCatalogChanges("Meta atualizada.");
     closeGoalModal();
-    deps.notify("Meta atualizada.");
   }
 
   function renderSettings() {
@@ -167,9 +240,9 @@ export function createSettingsModule(deps) {
 
   function renderCategoryManager() {
     const labels = { expense: "Despesa", income: "Receita", investment: "Investimento" };
-    const rows = Object.entries(state.settings.categories).flatMap(([type, list]) =>
-      list.map(([key, label, color, limit]) => ({ type, key, label, color, limit }))
-    );
+    const rows = getCatalog().categories
+      .filter((item) => !item.isArchived)
+      .map((item) => ({ type: item.kind, key: item.slug, label: item.name, color: item.color, limit: item.monthlyLimit }));
     const target = document.querySelector("#category-manage-list");
 
     target.innerHTML = rows
@@ -177,7 +250,7 @@ export function createSettingsModule(deps) {
         <div class="manage-item">
           <div>
             <strong><span class="color-dot" style="--color:${esc(item.color)}"></span>${esc(item.label)}</strong>
-            <small>${labels[item.type]}${item.type === "expense" ? ` | limite ${money(Number(item.limit || 0))}` : ""}${getSubcategories(item.type, item.key).length ? ` | ${getSubcategories(item.type, item.key).length} subcategoria${getSubcategories(item.type, item.key).length === 1 ? "" : "s"}` : ""}</small>
+            <small>${labels[item.type]}${item.type === "expense" ? ` | limite ${money(Number(item.limit || 0))}` : ""}${getTags(item.type, item.key).length ? ` | ${getTags(item.type, item.key).length} subcategoria${getTags(item.type, item.key).length === 1 ? "" : "s"}` : ""}</small>
           </div>
           <div class="mini-actions">
             <button class="mini-btn" type="button" data-edit-category="${item.type}:${item.key}">Editar</button>
@@ -190,11 +263,11 @@ export function createSettingsModule(deps) {
 
   function renderAccountManager() {
     const target = document.querySelector("#account-manage-list");
-    target.innerHTML = state.settings.accounts
-      .map((name, index) => `
+    target.innerHTML = getAccounts()
+      .map((account, index) => `
         <div class="manage-item">
           <div>
-            <strong>${esc(name)}</strong>
+            <strong>${esc(account.name)}</strong>
             <small>Conta disponivel para lancamentos</small>
           </div>
           <div class="mini-actions">
@@ -208,7 +281,7 @@ export function createSettingsModule(deps) {
 
   function renderCardManager() {
     const target = document.querySelector("#card-manage-list");
-    target.innerHTML = state.settings.creditCards
+    target.innerHTML = getCards()
       .map((card, index) => `
         <div class="manage-item">
           <div>
@@ -226,18 +299,19 @@ export function createSettingsModule(deps) {
 
   function renderGoalManager() {
     const target = document.querySelector("#goal-manage-list");
-    if (!state.settings.goals.length) {
+    const goals = getGoals();
+    if (!goals.length) {
       target.innerHTML = '<div class="empty-state">Nenhuma meta cadastrada.</div>';
       return;
     }
 
-    const categoryOptions = (selected) => state.settings.categories.investment
-      .map(([value, label]) => `<option value="${esc(value)}"${value === selected ? " selected" : ""}>${esc(label)}</option>`)
+    const categoryOptions = (selected) => getCategoriesByType("investment")
+      .map((item) => `<option value="${esc(item.slug)}"${item.slug === selected ? " selected" : ""}>${esc(item.name)}</option>`)
       .join("");
 
-    target.innerHTML = state.settings.goals
+    target.innerHTML = goals
       .map((goal, index) => {
-        const [, categoryLabel] = getCategory("investment", goal.key);
+        const categoryLabel = getCategoryRecord("investment", goal.key)?.name || goal.key;
         return `
           <div class="manage-item goal-edit-item">
             <div>
@@ -269,8 +343,8 @@ export function createSettingsModule(deps) {
   }
 
   function renderGoalCategoryOptions() {
-    const options = state.settings.categories.investment
-      .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`)
+    const options = getCategoriesByType("investment")
+      .map((item) => `<option value="${esc(item.slug)}">${esc(item.name)}</option>`)
       .join("");
     const selects = [document.querySelector("#new-goal-category"), document.querySelector("#goal-modal-category")].filter(Boolean);
     selects.forEach((select) => {
@@ -286,8 +360,8 @@ export function createSettingsModule(deps) {
     const type = document.querySelector("#new-subcategory-type")?.value || "expense";
     const select = document.querySelector("#new-subcategory-category");
     if (!select) return;
-    select.innerHTML = state.settings.categories[type]
-      .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`)
+    select.innerHTML = getCategoriesByType(type)
+      .map((item) => `<option value="${esc(item.slug)}">${esc(item.name)}</option>`)
       .join("");
   }
 
@@ -295,14 +369,14 @@ export function createSettingsModule(deps) {
     const target = document.querySelector("#subcategory-manage-list");
     if (!target) return;
     const typeLabels = { expense: "Despesa", income: "Receita", investment: "Investimento" };
-    const groups = Object.entries(state.settings.categories).flatMap(([type, categories]) =>
-      categories.map(([categoryKey, categoryLabel]) => ({
-        type,
-        categoryKey,
-        categoryLabel,
-        tags: getSubcategories(type, categoryKey),
-      }))
-    );
+    const groups = getCatalog().categories
+      .filter((item) => !item.isArchived)
+      .map((item) => ({
+        type: item.kind,
+        categoryKey: item.slug,
+        categoryLabel: item.name,
+        tags: getTags(item.kind, item.slug).map((tag) => [tag.slug, tag.name, tag.color]),
+      }));
 
     target.innerHTML = groups.map((group) => `
       <article class="tag-plan-card">
@@ -337,16 +411,21 @@ export function createSettingsModule(deps) {
     if (!normalized) return deps.notify("Informe um nome para a etiqueta.");
     const key = slugify(normalized);
     const color = getCategoryColorFromList(type, categoryKey, state.settings.categories);
-    state.settings.subcategories[type] ||= {};
-    state.settings.subcategories[type][categoryKey] ||= [];
-    if (state.settings.subcategories[type][categoryKey].some(([itemKey]) => itemKey === key)) {
+    const catalog = getCatalog();
+    if (catalog.tags.some((item) => item.kind === type && item.categorySlug === categoryKey && item.slug === key && !item.isArchived)) {
       return deps.notify("Esta etiqueta ja existe nessa categoria.");
     }
 
-    state.settings.subcategories[type][categoryKey].push([key, normalized, color]);
-    deps.persist();
-    deps.renderAll();
-    deps.notify("Etiqueta adicionada.");
+    catalog.tags.push({
+      id: `tag:${type}:${categoryKey}:${key}`,
+      kind: type,
+      categorySlug: categoryKey,
+      slug: key,
+      name: normalized,
+      color,
+      isArchived: false,
+    });
+    commitCatalogChanges("Etiqueta adicionada.");
   }
 
   function openSettingsItemModal(config) {
@@ -387,32 +466,34 @@ export function createSettingsModule(deps) {
     if (!name) return deps.notify("Informe um nome valido.");
 
     if (edit.kind === "category") {
-      const item = state.settings.categories[edit.type].find(([key]) => key === edit.key);
+      const item = getCategoryRecord(edit.type, edit.key);
       if (!item) return closeSettingsItemModal();
-      item[1] = name;
-      item[2] = document.querySelector("#settings-item-modal-color").value;
+      item.name = name;
+      item.color = document.querySelector("#settings-item-modal-color").value;
       const monthly = Math.max(0, Number(document.querySelector("#settings-item-modal-limit").value) || 0);
-      item[3] = monthly;
-      state.settings.budgetRules[edit.key] = {
-        weekly: getBudgetRule(edit.key).weekly || (monthly ? monthly / 4 : 0),
-        monthly,
-      };
+      item.monthlyLimit = monthly;
+      upsertBudget(edit.key, "weekly", getBudgetRule(edit.key).weekly || (monthly ? monthly / 4 : 0));
+      upsertBudget(edit.key, "monthly", monthly);
     }
 
     if (edit.kind === "account") {
-      const duplicate = state.settings.accounts.some((item, index) => index !== edit.index && item.toLowerCase() === name.toLowerCase());
+      const accounts = getAccounts();
+      const duplicate = accounts.some((item, index) => index !== edit.index && item.name.toLowerCase() === name.toLowerCase());
       if (duplicate) return deps.notify("Ja existe uma conta com este nome.");
-      const previous = state.settings.accounts[edit.index];
-      state.settings.accounts[edit.index] = name;
+      const previous = accounts[edit.index]?.name;
+      const account = accounts[edit.index];
+      if (!account) return closeSettingsItemModal();
+      account.name = name;
       state.transactions.forEach((item) => {
         if (item.account === previous) item.account = name;
       });
     }
 
     if (edit.kind === "card") {
-      const duplicate = state.settings.creditCards.some((item, index) => index !== edit.index && item.name.toLowerCase() === name.toLowerCase());
+      const cards = getCards();
+      const duplicate = cards.some((item, index) => index !== edit.index && item.name.toLowerCase() === name.toLowerCase());
       if (duplicate) return deps.notify("Ja existe um cartao com este nome.");
-      const card = state.settings.creditCards[edit.index];
+      const card = cards[edit.index];
       if (!card) return closeSettingsItemModal();
       card.name = name;
       card.closingDay = Math.max(1, Math.min(31, Number(document.querySelector("#settings-item-modal-closing").value) || 25));
@@ -420,17 +501,14 @@ export function createSettingsModule(deps) {
     }
 
     if (edit.kind === "tag") {
-      const list = state.settings.subcategories?.[edit.type]?.[edit.categoryKey];
-      const item = list?.find(([key]) => key === edit.subKey);
+      const item = getTagRecord(edit.type, edit.categoryKey, edit.subKey);
       if (!item) return closeSettingsItemModal();
-      item[1] = name;
-      item[2] = document.querySelector("#settings-item-modal-color").value;
+      item.name = name;
+      item.color = document.querySelector("#settings-item-modal-color").value;
     }
 
-    deps.persist();
-    deps.renderAll();
+    commitCatalogChanges("Alteracoes salvas.");
     closeSettingsItemModal();
-    deps.notify("Alteracoes salvas.");
   }
 
   function addCategory(event) {
@@ -442,23 +520,27 @@ export function createSettingsModule(deps) {
     const key = slugify(name);
 
     if (!key) return deps.notify("Informe um nome valido.");
-    if (state.settings.categories[type].some(([itemKey]) => itemKey === key)) {
+    if (getCategoriesByType(type).some((item) => item.slug === key)) {
       return deps.notify("Esta categoria ja existe.");
     }
 
-    state.settings.categories[type].push([key, name, color, type === "expense" ? limit : 0]);
+    getCatalog().categories.push({
+      id: `category:${type}:${key}`,
+      kind: type,
+      slug: key,
+      name,
+      color,
+      monthlyLimit: type === "expense" ? limit : null,
+      isArchived: false,
+    });
     if (type === "expense") {
-      state.settings.budgetRules[key] = {
-        weekly: limit ? limit / 4 : 0,
-        monthly: limit,
-      };
+      upsertBudget(key, "weekly", limit ? limit / 4 : 0);
+      upsertBudget(key, "monthly", limit);
     }
     event.currentTarget.reset();
     document.querySelector("#new-category-color").value = "#0b7285";
-    deps.persist();
+    commitCatalogChanges("Categoria criada.");
     deps.updateCategoryOptions();
-    deps.renderAll();
-    deps.notify("Categoria criada.");
   }
 
   function addAccount(event) {
@@ -466,16 +548,21 @@ export function createSettingsModule(deps) {
     const input = document.querySelector("#new-account-name");
     const name = input.value.trim();
     if (!name) return deps.notify("Informe o nome da conta.");
-    if (state.settings.accounts.some((item) => item.toLowerCase() === name.toLowerCase())) {
+    if (getAccounts().some((item) => item.name.toLowerCase() === name.toLowerCase())) {
       return deps.notify("Esta conta ja existe.");
     }
 
-    state.settings.accounts.push(name);
+    getCatalog().accounts.push({
+      id: `account:${slugify(name)}`,
+      name,
+      kind: "checking",
+      color: "#0b7285",
+      institution: "",
+      isArchived: false,
+    });
     input.value = "";
-    deps.persist();
+    commitCatalogChanges("Conta criada.");
     deps.updateAccountOptions();
-    deps.renderAll();
-    deps.notify("Conta criada.");
   }
 
   function addCreditCard(event) {
@@ -486,17 +573,15 @@ export function createSettingsModule(deps) {
     const dueDay = Number(document.querySelector("#new-card-due").value);
     if (!name) return deps.notify("Informe o nome do cartao.");
     if (closingDay < 1 || closingDay > 31 || dueDay < 1 || dueDay > 31) return deps.notify("Informe dias validos.");
-    if (state.settings.creditCards.some((card) => card.name.toLowerCase() === name.toLowerCase())) {
+    if (getCards().some((card) => card.name.toLowerCase() === name.toLowerCase())) {
       return deps.notify("Este cartao ja existe.");
     }
-    state.settings.creditCards.push({ id: createId(), name, closingDay, dueDay });
+    getCatalog().creditCards.push({ id: createId(), name, closingDay, dueDay, color: "#635bff", accountId: null, brand: "", isArchived: false });
     event.currentTarget.reset();
     document.querySelector("#new-card-closing").value = 25;
     document.querySelector("#new-card-due").value = 10;
-    deps.persist();
+    commitCatalogChanges("Cartao criado.");
     deps.updateCreditCardOptions();
-    deps.renderAll();
-    deps.notify("Cartao criado.");
   }
 
   function addSubcategory(event) {
@@ -508,20 +593,24 @@ export function createSettingsModule(deps) {
     if (!name || !categoryKey) return deps.notify("Preencha a subcategoria corretamente.");
 
     const key = slugify(name);
-    state.settings.subcategories[type] ||= {};
-    state.settings.subcategories[type][categoryKey] ||= [];
-    if (state.settings.subcategories[type][categoryKey].some(([itemKey]) => itemKey === key)) {
+    if (getTags(type, categoryKey).some((item) => item.slug === key)) {
       return deps.notify("Esta subcategoria ja existe nessa categoria.");
     }
 
-    state.settings.subcategories[type][categoryKey].push([key, name, color]);
+    getCatalog().tags.push({
+      id: `tag:${type}:${categoryKey}:${key}`,
+      kind: type,
+      categorySlug: categoryKey,
+      slug: key,
+      name,
+      color,
+      isArchived: false,
+    });
     event.currentTarget.reset();
     document.querySelector("#new-subcategory-type").value = type;
     document.querySelector("#new-subcategory-color").value = "#0b7285";
     renderSubcategoryParentOptions();
-    deps.persist();
-    deps.renderAll();
-    deps.notify("Subcategoria criada.");
+    commitCatalogChanges("Subcategoria criada.");
   }
 
   function addGoal(event) {
@@ -531,15 +620,13 @@ export function createSettingsModule(deps) {
     const target = Number(document.querySelector("#new-goal-target").value);
     if (!name || target <= 0) return deps.notify("Preencha a meta corretamente.");
 
-    state.settings.goals.push({ name, key, target });
+    getCatalog().goals.push({ id: createId(), name, key, target, currentAmount: 0, color: "#635bff", isArchived: false });
     event.currentTarget.reset();
-    deps.persist();
-    deps.renderAll();
-    deps.notify("Meta criada.");
+    commitCatalogChanges("Meta criada.");
   }
 
   function updateGoal(index) {
-    const goal = state.settings.goals[index];
+    const goal = getGoalRecord(index);
     if (!goal) return;
     const nameInput = document.querySelector(`[data-goal-name="${index}"]`);
     const categoryInput = document.querySelector(`[data-goal-category="${index}"]`);
@@ -554,79 +641,64 @@ export function createSettingsModule(deps) {
     goal.name = name;
     goal.key = key;
     goal.target = target;
-    deps.persist();
-    deps.renderAll();
-    deps.notify("Meta atualizada.");
+    commitCatalogChanges("Meta atualizada.");
   }
 
   function removeCategory(type, key) {
-    if (state.settings.categories[type].length <= 1) {
+    if (getCategoriesByType(type).length <= 1) {
       return deps.notify("Mantenha pelo menos uma categoria deste tipo.");
     }
     const inUse = state.transactions.some((item) => item.type === type && item.category === key);
     if (inUse) return deps.notify("Categoria em uso. Remova ou altere os lancamentos primeiro.");
-    state.settings.categories[type] = state.settings.categories[type].filter(([itemKey]) => itemKey !== key);
-    if (state.settings.subcategories?.[type]?.[key]) delete state.settings.subcategories[type][key];
-    state.settings.goals = state.settings.goals.filter((goal) => goal.key !== key);
-    if (state.settings.budgetRules?.[key]) delete state.settings.budgetRules[key];
-    deps.persist();
+    const catalog = getCatalog();
+    catalog.categories = catalog.categories.filter((item) => !(item.kind === type && item.slug === key));
+    catalog.tags = catalog.tags.filter((item) => !(item.kind === type && item.categorySlug === key));
+    catalog.goals = catalog.goals.filter((goal) => goal.key !== key);
+    catalog.budgets = catalog.budgets.filter((item) => item.categorySlug !== key);
+    commitCatalogChanges("Categoria removida.");
     deps.updateCategoryOptions();
-    deps.renderAll();
-    deps.notify("Categoria removida.");
   }
 
   function removeSubcategory(type, categoryKey, subKey) {
     const inUse = state.transactions.some((item) => item.type === type && item.category === categoryKey && item.subcategory === subKey);
     if (inUse) return deps.notify("Subcategoria em uso. Ajuste os lancamentos primeiro.");
-    state.settings.subcategories[type][categoryKey] = (state.settings.subcategories[type][categoryKey] || [])
-      .filter(([itemKey]) => itemKey !== subKey);
-    if (!state.settings.subcategories[type][categoryKey].length) {
-      delete state.settings.subcategories[type][categoryKey];
-    }
-    deps.persist();
-    deps.renderAll();
-    deps.notify("Subcategoria removida.");
+    getCatalog().tags = getCatalog().tags.filter((item) => !(item.kind === type && item.categorySlug === categoryKey && item.slug === subKey));
+    commitCatalogChanges("Subcategoria removida.");
   }
 
   function removeAccount(index) {
-    const name = state.settings.accounts[index];
+    const accounts = getAccounts();
+    const name = accounts[index]?.name;
     if (!name) return;
-    if (state.settings.accounts.length <= 1) return deps.notify("Mantenha pelo menos uma conta cadastrada.");
+    if (accounts.length <= 1) return deps.notify("Mantenha pelo menos uma conta cadastrada.");
     const inUse = state.transactions.some((item) => item.account === name);
     if (inUse) return deps.notify("Conta em uso. Remova ou altere os lancamentos primeiro.");
-    state.settings.accounts.splice(index, 1);
-    deps.persist();
+    getCatalog().accounts = getCatalog().accounts.filter((item, itemIndex) => itemIndex !== index);
+    commitCatalogChanges("Conta removida.");
     deps.updateAccountOptions();
-    deps.renderAll();
-    deps.notify("Conta removida.");
   }
 
   function removeCreditCard(index) {
-    const card = state.settings.creditCards[index];
+    const card = getCardRecord(index);
     if (!card) return;
     const inUse = state.transactions.some((item) => item.creditCardId === card.id);
     if (inUse) return deps.notify("Cartao em uso. Altere os lancamentos primeiro.");
-    state.settings.creditCards.splice(index, 1);
-    deps.persist();
+    getCatalog().creditCards = getCatalog().creditCards.filter((item) => item.id !== card.id);
+    commitCatalogChanges("Cartao removido.");
     deps.updateCreditCardOptions();
-    deps.renderAll();
-    deps.notify("Cartao removido.");
   }
 
   function editExpenseLimit(key) {
-    const category = state.settings.categories.expense.find(([itemKey]) => itemKey === key);
+    const category = getCategoryRecord("expense", key);
     if (!category) return;
     const current = getBudgetRule(key);
-    const next = prompt("Novo limite mensal para esta categoria:", current.monthly || category[3] || 0);
+    const next = prompt("Novo limite mensal para esta categoria:", current.monthly || category.monthlyLimit || 0);
     if (next === null) return;
     const monthly = Math.max(0, Number(next) || 0);
-    state.settings.budgetRules[key] ||= { weekly: 0, monthly: 0 };
-    state.settings.budgetRules[key].monthly = monthly;
-    state.settings.budgetRules[key].weekly = current.weekly || (monthly ? monthly / 4 : 0);
-    syncCategoryMonthlyLimit(key, monthly);
-    deps.persist();
-    deps.renderAll();
-    deps.notify("Limite atualizado.");
+    category.monthlyLimit = monthly;
+    upsertBudget(key, "monthly", monthly);
+    upsertBudget(key, "weekly", current.weekly || (monthly ? monthly / 4 : 0));
+    commitCatalogChanges("Limite atualizado.");
   }
 
   function saveBudgetRule(event) {
@@ -636,14 +708,18 @@ export function createSettingsModule(deps) {
     if (!key) return;
     const weekly = Math.max(0, Number(new FormData(form).get("weekly")) || 0);
     const monthly = Math.max(0, Number(new FormData(form).get("monthly")) || 0);
-    state.settings.budgetRules[key] = { weekly, monthly };
-    syncCategoryMonthlyLimit(key, monthly);
-    deps.persist();
-    deps.renderAll();
-    deps.notify("Regras de gasto atualizadas.");
+    const category = getCategoryRecord("expense", key);
+    if (category) category.monthlyLimit = monthly;
+    upsertBudget(key, "weekly", weekly);
+    upsertBudget(key, "monthly", monthly);
+    commitCatalogChanges("Regras de gasto atualizadas.");
   }
 
   return {
+    getCategoryRecord,
+    getAccountRecord,
+    getCardRecord,
+    getTagRecord,
     renderGoals,
     renderGoalsSummary,
     openGoalContribution,
@@ -669,6 +745,12 @@ export function createSettingsModule(deps) {
     addSubcategory,
     addGoal,
     updateGoal,
+    removeGoal(index) {
+      const goal = getGoalRecord(index);
+      if (!goal) return;
+      getCatalog().goals = getCatalog().goals.filter((item) => item.id !== goal.id);
+      commitCatalogChanges("Meta removida.");
+    },
     removeCategory,
     removeSubcategory,
     removeAccount,

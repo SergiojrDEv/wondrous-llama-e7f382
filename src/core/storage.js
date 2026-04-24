@@ -1,11 +1,12 @@
 import { APP_STORAGE_KEY, STORAGE_KEY, defaultSettings, state } from "./state.js";
+import { buildCatalogFromSettings, buildSettingsFromCatalog } from "./catalog.js";
 import { clone, mergeBudgetRules, mergeSubcategories } from "./utils.js";
 
 export function createStorageModule(deps) {
   function save() {
     localStorage.setItem(
       APP_STORAGE_KEY,
-      JSON.stringify({ transactions: state.transactions, settings: state.settings })
+      JSON.stringify({ transactions: state.transactions, settings: state.settings, catalog: state.catalog })
     );
   }
 
@@ -29,20 +30,33 @@ export function createStorageModule(deps) {
         const saved = JSON.parse(raw);
         state.transactions = Array.isArray(saved.transactions) ? saved.transactions : [];
         state.settings = mergeSettings(saved.settings);
+        state.catalog = buildCatalogFromSettings(state.settings, saved.catalog || {});
         return;
       }
 
       const legacy = localStorage.getItem(STORAGE_KEY);
       state.transactions = legacy ? JSON.parse(legacy) : [];
       state.settings = mergeSettings();
+      state.catalog = buildCatalogFromSettings(state.settings);
     } catch (error) {
       console.error("Erro ao ler cache local", error);
       localStorage.removeItem(APP_STORAGE_KEY);
       localStorage.removeItem(STORAGE_KEY);
       state.transactions = [];
       state.settings = mergeSettings();
+      state.catalog = buildCatalogFromSettings(state.settings);
       deps.notify?.("Os dados locais estavam corrompidos e foram reinicializados neste navegador.");
     }
+  }
+
+  function hydrateCatalog(settings = state.settings, existingCatalog = state.catalog) {
+    state.catalog = buildCatalogFromSettings(settings, existingCatalog || {});
+    return state.catalog;
+  }
+
+  function syncSettingsFromCatalog() {
+    state.settings = mergeSettings(buildSettingsFromCatalog(state.catalog));
+    return state.settings;
   }
 
   function mergeSettings(saved = {}) {
@@ -61,5 +75,5 @@ export function createStorageModule(deps) {
     };
   }
 
-  return { save, persist, scheduleAutoSync, load, mergeSettings };
+  return { save, persist, scheduleAutoSync, load, mergeSettings, hydrateCatalog, syncSettingsFromCatalog };
 }
