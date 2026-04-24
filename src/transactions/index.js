@@ -4,6 +4,9 @@ import {
   categoryDisplayLabel,
   createId,
   esc,
+  getAccountsList,
+  getCategoriesByType,
+  getCreditCardsList,
   getMonthTransactions,
   resolveTransactionAccount,
   resolveTransactionCategory,
@@ -28,25 +31,25 @@ export function createTransactionsModule(deps) {
   }
 
   function updateCategoryOptions() {
-    els.category.innerHTML = state.settings.categories[state.activeType]
-      .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`)
+    els.category.innerHTML = getCategoriesByType(state.activeType)
+      .map((item) => `<option value="${esc(item.slug)}">${esc(item.name)}</option>`)
       .join("");
     updateSubcategoryOptions();
   }
 
   function updateAccountOptions() {
-    els.account.innerHTML = state.settings.accounts.map((name) => `<option>${esc(name)}</option>`).join("");
+    els.account.innerHTML = getAccountsList().map((item) => `<option>${esc(item.name)}</option>`).join("");
   }
 
   function updateCreditCardOptions() {
     if (!els.creditCard) return;
-    els.creditCard.innerHTML = '<option value="">Nenhum</option>' + state.settings.creditCards
+    els.creditCard.innerHTML = '<option value="">Nenhum</option>' + getCreditCardsList()
       .map((card) => `<option value="${esc(card.id)}">${esc(card.name)}</option>`)
       .join("");
 
     const modalCard = document.querySelector("#transaction-modal-credit-card");
     if (modalCard) {
-      modalCard.innerHTML = '<option value="">Nenhum</option>' + state.settings.creditCards
+      modalCard.innerHTML = '<option value="">Nenhum</option>' + getCreditCardsList()
         .map((card) => `<option value="${esc(card.id)}">${esc(card.name)}</option>`)
         .join("");
     }
@@ -69,8 +72,8 @@ export function createTransactionsModule(deps) {
   function updateTransactionModalCategories(type = state.transactionModalType) {
     const category = document.querySelector("#transaction-modal-category");
     if (!category) return;
-    category.innerHTML = state.settings.categories[type]
-      .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`)
+    category.innerHTML = getCategoriesByType(type)
+      .map((item) => `<option value="${esc(item.slug)}">${esc(item.name)}</option>`)
       .join("");
     updateTransactionModalSubcategoryOptions();
   }
@@ -78,7 +81,7 @@ export function createTransactionsModule(deps) {
   function updateTransactionModalAccounts() {
     const account = document.querySelector("#transaction-modal-account");
     if (!account) return;
-    account.innerHTML = state.settings.accounts.map((name) => `<option>${esc(name)}</option>`).join("");
+    account.innerHTML = getAccountsList().map((item) => `<option>${esc(item.name)}</option>`).join("");
   }
 
   function updateTransactionModalCreditFields() {

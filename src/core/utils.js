@@ -49,8 +49,34 @@ export function getMonthTransactions(date = state.currentDate) {
   return state.transactions.filter((item) => transactionMonth(item) === key);
 }
 
+export function getCategoriesByType(type) {
+  const catalogCategories = (state.catalog?.categories || []).filter((item) => item.kind === type && !item.isArchived);
+  if (catalogCategories.length) {
+    return catalogCategories.map((item) => ({
+      id: item.id,
+      kind: item.kind,
+      slug: item.slug,
+      name: item.name,
+      color: item.color || "#667085",
+      monthlyLimit: item.kind === "expense" ? Number(item.monthlyLimit || 0) : null,
+    }));
+  }
+  return (state.settings.categories[type] || []).map(([slug, name, color, monthlyLimit]) => ({
+    id: null,
+    kind: type,
+    slug,
+    name,
+    color: color || "#667085",
+    monthlyLimit: type === "expense" ? Number(monthlyLimit || 0) : null,
+  }));
+}
+
 export function getCategory(type, key) {
-  return state.settings.categories[type].find((item) => item[0] === key) || [key, key, "#667085"];
+  const category = getCategoriesByType(type).find((item) => item.slug === key);
+  return category
+    ? [category.slug, category.name, category.color, category.monthlyLimit]
+    : [key, key, "#667085"];
+}
 }
 
 export function mergeBudgetRules(saved = {}, expenseCategories = []) {
@@ -67,12 +93,23 @@ export function mergeBudgetRules(saved = {}, expenseCategories = []) {
 }
 
 export function getBudgetRule(categoryKey) {
+  const budgets = state.catalog?.budgets || [];
+  if (budgets.length) {
+    const weekly = budgets.find((item) => item.categorySlug === categoryKey && item.periodKind === "weekly");
+    const monthly = budgets.find((item) => item.categorySlug === categoryKey && item.periodKind === "monthly");
+    return {
+      weekly: Number(weekly?.amount || 0),
+      monthly: Number(monthly?.amount || 0),
+    };
+  }
   return state.settings.budgetRules?.[categoryKey] || { weekly: 0, monthly: 0 };
 }
 
 export function syncCategoryMonthlyLimit(categoryKey, monthly) {
   const category = state.settings.categories.expense.find(([itemKey]) => itemKey === categoryKey);
   if (category) category[3] = monthly;
+  const catalogCategory = (state.catalog?.categories || []).find((item) => item.kind === "expense" && item.slug === categoryKey && !item.isArchived);
+  if (catalogCategory) catalogCategory.monthlyLimit = monthly;
 }
 
 export function getCategoryColorFromList(type, categoryKey, categories = defaultSettings.categories) {
@@ -98,6 +135,12 @@ export function mergeSubcategories(saved = {}, categories = defaultSettings.cate
 }
 
 export function getSubcategories(type, categoryKey) {
+  const catalogTags = (state.catalog?.tags || []).filter(
+    (item) => item.kind === type && item.categorySlug === categoryKey && !item.isArchived
+  );
+  if (catalogTags.length) {
+    return catalogTags.map((item) => [item.slug, item.name, item.color || "#667085"]);
+  }
   return state.settings.subcategories?.[type]?.[categoryKey] || [];
 }
 
@@ -136,6 +179,29 @@ export function resolveTransactionAccount(item) {
 
 export function resolveTransactionCreditCard(item) {
   return getCatalogCreditCard(state.catalog, item.creditCardId || item.credit_card_id || null);
+}
+
+export function getAccountsList() {
+  const catalogAccounts = (state.catalog?.accounts || []).filter((item) => !item.isArchived);
+  if (catalogAccounts.length) return catalogAccounts.map((item) => ({ ...item }));
+  return (state.settings.accounts || []).map((name) => ({
+    id: null,
+    name,
+    kind: "checking",
+    color: "#0b7285",
+  }));
+}
+
+export function getCreditCardsList() {
+  const catalogCards = (state.catalog?.creditCards || []).filter((item) => !item.isArchived);
+  if (catalogCards.length) return catalogCards.map((item) => ({ ...item }));
+  return (state.settings.creditCards || []).map((item) => ({
+    id: item.id,
+    name: item.name,
+    closingDay: Number(item.closingDay || 25),
+    dueDay: Number(item.dueDay || 10),
+    color: item.color || "#635bff",
+  }));
 }
 
 export function syncTransactionRefs(item) {

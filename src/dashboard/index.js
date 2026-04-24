@@ -4,6 +4,7 @@ import {
   esc,
   getBudgetRule,
   getCategory,
+  getCategoriesByType,
   getMonthTransactions,
   money,
   monthKey,
@@ -143,16 +144,16 @@ export function createDashboardModule(deps) {
       });
     });
 
-    state.settings.categories.expense.forEach(([key, label, , limit]) => {
-      const threshold = Number(getBudgetRule(key).monthly || limit || 0);
+    getCategoriesByType("expense").forEach(({ slug, name, monthlyLimit }) => {
+      const threshold = Number(getBudgetRule(slug).monthly || monthlyLimit || 0);
       if (!threshold) return;
       const used = transactions
-        .filter((item) => item.type === "expense" && item.category === key)
+        .filter((item) => item.type === "expense" && item.category === slug)
         .reduce((sum, item) => sum + Number(item.amount), 0);
       if (used >= threshold * 0.8) {
         insights.push({
           label: used > threshold ? "Orcamento estourado" : "Perto do limite",
-          text: `${label}: ${money(used)} de ${money(threshold)}`,
+          text: `${name}: ${money(used)} de ${money(threshold)}`,
         });
       }
     });
@@ -261,14 +262,14 @@ export function createDashboardModule(deps) {
     weekEnd.setDate(weekStart.getDate() + 6);
     const weekStartKey = toDateInput(weekStart);
     const weekEndKey = toDateInput(weekEnd);
-    target.innerHTML = state.settings.categories.expense
-      .map(([key, label, color]) => {
-        const rule = getBudgetRule(key);
+    target.innerHTML = getCategoriesByType("expense")
+      .map(({ slug, name, color }) => {
+        const rule = getBudgetRule(slug);
         const monthlyUsed = expenses
-          .filter((item) => item.category === key)
+          .filter((item) => item.category === slug)
           .reduce((sum, item) => sum + Number(item.amount), 0);
         const weeklyUsed = expenses
-          .filter((item) => item.category === key && item.date >= weekStartKey && item.date <= weekEndKey)
+          .filter((item) => item.category === slug && item.date >= weekStartKey && item.date <= weekEndKey)
           .reduce((sum, item) => sum + Number(item.amount), 0);
         const monthlyPct = rule.monthly ? Math.min((monthlyUsed / rule.monthly) * 100, 100) : 0;
         const weeklyPct = rule.weekly ? Math.min((weeklyUsed / rule.weekly) * 100, 100) : 0;
@@ -277,7 +278,7 @@ export function createDashboardModule(deps) {
         return `
           <article class="budget-card">
             <header class="budget-card-header">
-              <strong>${esc(label)}</strong>
+              <strong>${esc(name)}</strong>
               <div class="budget-badges">
                 <span class="budget-badge">Sem ${weeklyStatus}</span>
                 <span class="budget-badge">Mes ${monthlyStatus}</span>
@@ -297,7 +298,7 @@ export function createDashboardModule(deps) {
               </div>
               <div class="bar"><span style="--value:${monthlyPct}%;--color:${color}"></span></div>
             </div>
-            <form class="budget-rule-form compact" data-budget-key="${esc(key)}">
+            <form class="budget-rule-form compact" data-budget-key="${esc(slug)}">
               <label>
                 Semanal
                 <input type="number" min="0" step="0.01" name="weekly" value="${Number(rule.weekly || 0)}">
