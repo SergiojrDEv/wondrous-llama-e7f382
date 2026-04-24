@@ -145,28 +145,20 @@
           <strong id="current-month">Abril 2026</strong>
           <button class="icon-btn" id="next-month" type="button" aria-label="Proximo mes">&gt;</button>
         </div>
-        <div class="utility-actions">
-          <button class="ghost-btn is-hidden utility-btn" id="install-app" type="button">Instalar app</button>
-          <button class="danger-btn utility-btn" id="logout-btn" type="button">Sair</button>
-        </div>
+        <button class="ghost-btn is-hidden" id="install-app" type="button">Instalar app</button>
+        <button class="ghost-btn" id="seed-data" type="button">Dados exemplo</button>
+        <button class="primary-btn" id="open-transaction" type="button">Novo lancamento</button>
+        <button class="danger-btn" id="logout-btn" type="button">Sair</button>
       </div>
     </header>
 
     <section class="section active" id="visao-geral">
-      <article class="panel overview-hero">
-        <div>
-          <p class="eyebrow">Hoje ate o fim do mes</p>
-          <h2 id="overview-greeting">Ola</h2>
-          <p class="overview-subtitle" id="overview-period-copy">Acompanhe o que entra, sai e sobra no periodo atual.</p>
-        </div>
-        <div class="overview-hero-side">
-          <span class="overview-hero-label">Disponibilidade financeira</span>
-          <strong id="overview-free-balance">R$ 0,00</strong>
-          <small id="overview-free-caption">Saldo disponivel para movimentacao imediata</small>
-        </div>
-      </article>
-
       <div class="summary-grid" aria-label="Resumo do mes">
+        <article class="metric-card income">
+          <span>Receitas</span>
+          <strong id="income-total">R$ 0,00</strong>
+          <small id="income-count">0 lancamentos</small>
+        </article>
         <article class="metric-card expense">
           <span>Despesas</span>
           <strong id="expense-total">R$ 0,00</strong>
@@ -177,68 +169,66 @@
           <strong id="invest-total">R$ 0,00</strong>
           <small id="invest-rate">0% da receita direcionado para investimento</small>
         </article>
-        <article class="metric-card income">
-          <span>Receitas</span>
-          <strong id="income-total">R$ 0,00</strong>
-          <small id="income-count">0 lancamentos</small>
+        <article class="metric-card balance">
+          <span>Disponivel para movimentacao</span>
+          <strong id="free-balance">R$ 0,00</strong>
+          <small id="commitment-rate">0% da receita ja foi comprometida</small>
         </article>
       </div>
 
-      <div class="overview-shell">
-        <div class="overview-main">
-          <article class="panel smart-panel">
-            <div class="panel-header compact-header">
-              <div>
-                <p class="eyebrow">Resumo inteligente</p>
-                <h2 id="smart-title">Seu mes em uma frase</h2>
-              </div>
+      <div class="smart-grid">
+        <article class="panel smart-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Resumo inteligente</p>
+              <h2 id="smart-title">Seu mes em uma frase</h2>
             </div>
-            <p class="smart-copy" id="smart-copy">Adicione lancamentos para receber uma leitura do mes.</p>
-            <div class="smart-metrics">
-              <div>
-                <span>Gasto diario seguro</span>
-                <strong id="daily-safe">R$ 0,00</strong>
-              </div>
-              <div>
-                <span>Comparativo</span>
-                <strong id="month-comparison">Sem historico</strong>
-              </div>
+          </div>
+          <p class="smart-copy" id="smart-copy">Adicione lancamentos para receber uma leitura do mes.</p>
+          <div class="smart-metrics">
+            <div>
+              <span>Gasto diario seguro</span>
+              <strong id="daily-safe">R$ 0,00</strong>
             </div>
-          </article>
+            <div>
+              <span>Comparativo</span>
+              <strong id="month-comparison">Sem historico</strong>
+            </div>
+          </div>
+        </article>
 
-          <article class="panel chart-panel">
-            <div class="panel-header compact-header">
-              <div>
-                <p class="eyebrow">Fluxo</p>
-                <h2>Ultimos 6 meses</h2>
-              </div>
-              <span class="status-pill" id="trend-status">Sem dados</span>
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Proximos passos</p>
+              <h2>Alertas e vencimentos</h2>
             </div>
-            <canvas id="cashflow-chart" height="120" aria-label="Grafico de fluxo financeiro"></canvas>
-          </article>
-        </div>
+          </div>
+          <div class="insight-list" id="insight-list"></div>
+        </article>
+      </div>
 
-        <aside class="overview-rail">
-          <article class="panel compact-panel">
-            <div class="panel-header compact-header">
-              <div>
-                <p class="eyebrow">Proximos passos</p>
-                <h2>Alertas e vencimentos</h2>
-              </div>
+      <div class="dashboard-grid">
+        <article class="panel chart-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Fluxo</p>
+              <h2>Ultimos 6 meses</h2>
             </div>
-            <div class="insight-list" id="insight-list"></div>
-          </article>
+            <span class="status-pill" id="trend-status">Sem dados</span>
+          </div>
+          <canvas id="cashflow-chart" height="120" aria-label="Grafico de fluxo financeiro"></canvas>
+        </article>
 
-          <article class="panel compact-panel">
-            <div class="panel-header compact-header">
-              <div>
-                <p class="eyebrow">Categorias</p>
-                <h2>Onde o mes pesa mais</h2>
-              </div>
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Categorias</p>
+              <h2>Maiores despesas</h2>
             </div>
-            <div class="category-card-grid" id="category-breakdown"></div>
-          </article>
-        </aside>
+          </div>
+          <div class="stack-list" id="category-breakdown"></div>
+        </article>
       </div>
     </section>
 
@@ -672,25 +662,6 @@
       </div>
     </section>
   </main>
-
-  <nav class="mobile-nav is-hidden" id="mobile-nav" aria-label="Navegacao rapida">
-    <a class="nav-item mobile-nav-item active" href="#visao-geral" data-section="visao-geral">
-      <strong>Inicio</strong>
-      <small>Painel</small>
-    </a>
-    <a class="nav-item mobile-nav-item" href="#lancamentos-mes" data-section="lancamentos-mes">
-      <strong>Mes</strong>
-      <small>Historico</small>
-    </a>
-    <a class="nav-item mobile-nav-item" href="#orcamentos" data-section="orcamentos">
-      <strong>Limites</strong>
-      <small>Controle</small>
-    </a>
-    <a class="nav-item mobile-nav-item" href="#ajustes" data-section="ajustes">
-      <strong>Ajustes</strong>
-      <small>Plano</small>
-    </a>
-  </nav>
 
   <div class="modal-overlay is-hidden" id="settings-item-modal-overlay">
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="settings-item-modal-title">

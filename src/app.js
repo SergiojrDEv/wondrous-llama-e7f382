@@ -107,7 +107,6 @@ const els = {
   authScreen: document.querySelector("#auth-screen"),
   appShell: document.querySelector("#app-shell"),
   sidebar: document.querySelector("#sidebar"),
-  mobileNav: document.querySelector("#mobile-nav"),
   authNote: document.querySelector("#auth-note"),
   authTitle: document.querySelector("#auth-title"),
   installApp: document.querySelector("#install-app"),
@@ -298,26 +297,11 @@ function notify(message) {
   window.setTimeout(() => els.toast.classList.remove("show"), 2400);
 }
 
-function isStandaloneMode() {
-  return Boolean(window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone);
-}
-
-function isIosDevice() {
-  return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
-}
-
-function isSafariBrowser() {
-  const ua = window.navigator.userAgent;
-  return /safari/i.test(ua) && !/chrome|crios|android|edg/i.test(ua);
-}
-
 function updateInstallButton() {
   if (!els.installApp) return;
-  const standalone = isStandaloneMode();
-  els.installApp.classList.toggle("is-hidden", standalone);
-  if (standalone) return;
-  const label = state.deferredInstallPrompt ? "Instalar app" : "Como instalar";
-  els.installApp.textContent = label;
+  const standalone = window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone;
+  const canInstall = Boolean(state.deferredInstallPrompt) && !standalone;
+  els.installApp.classList.toggle("is-hidden", !canInstall);
 }
 
 function setupPwaSupport() {
@@ -346,11 +330,7 @@ function setupPwaSupport() {
 
 async function promptInstallApp() {
   if (!state.deferredInstallPrompt) {
-    if (isIosDevice() && isSafariBrowser()) {
-      window.alert("No iPhone, abra o menu Compartilhar do Safari e toque em 'Adicionar a Tela de Inicio'.");
-      return;
-    }
-    window.alert("Neste navegador, abra o menu principal e procure por 'Instalar app', 'Instalar aplicativo' ou 'Adicionar a tela inicial'.");
+    notify("A instalacao ainda nao esta disponivel neste navegador.");
     return;
   }
 
@@ -553,15 +533,11 @@ function renderSummary() {
   document.querySelector("#income-total").textContent = money(totals.income);
   document.querySelector("#expense-total").textContent = money(totals.expense);
   document.querySelector("#invest-total").textContent = money(totals.investment);
-  document.querySelector("#overview-free-balance").textContent = money(free);
+  document.querySelector("#free-balance").textContent = money(free);
   document.querySelector("#income-count").textContent = `${transactions.filter((item) => item.type === "income").length} lancamentos`;
   document.querySelector("#expense-count").textContent = `${expenseCategories.size} categorias`;
   document.querySelector("#invest-rate").textContent = `${investRate.toFixed(1)}% da receita direcionado para investimento`;
   document.querySelector("#commitment-rate").textContent = `${commitment.toFixed(1)}% da receita ja foi comprometida`;
-  document.querySelector("#overview-free-caption").textContent =
-    free >= 0
-      ? "Saldo disponivel para movimentacao imediata"
-      : `Faltam ${money(Math.abs(free))} para voltar ao positivo`;
   document.querySelector("#health-score").textContent = `${Math.round(health)}%`;
   document.querySelector("#health-copy").textContent =
     !hasTransactions
@@ -574,24 +550,6 @@ function renderSummary() {
           ? "Bom equilibrio entre gastos, reserva e disponivel para movimentacao."
           : "Revise os maiores gastos e proteja o valor ainda disponivel para movimentacao.";
   renderSmartDashboard(transactions, totals, free);
-}
-
-function getDisplayName() {
-  const name = state.currentUser?.user_metadata?.full_name?.trim();
-  if (name) return name;
-  const email = state.currentUser?.email || "";
-  return email ? email.split("@")[0] : "Finance Flow";
-}
-
-function renderOverviewContext() {
-  const monthStart = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth(), 1);
-  const monthEnd = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth() + 1, 0);
-  const today = new Date();
-  const rangeStart = monthKey(today) === monthKey(state.currentDate) ? today : monthStart;
-  const startText = rangeStart.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
-  const endText = monthEnd.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
-  document.querySelector("#overview-greeting").textContent = `Ola, ${getDisplayName()}`;
-  document.querySelector("#overview-period-copy").textContent = `${startText} ate ${endText}`;
 }
 
 function renderSmartDashboard(transactions, totals, free) {
@@ -682,12 +640,12 @@ function renderInsights(transactions, totals) {
 
 function renderCategoryBreakdown() {
   const expenses = getMonthTransactions().filter((item) => item.type === "expense");
-  const totalExpense = expenses.reduce((sum, item) => sum + Number(item.amount), 0);
   const totals = expenses.reduce((acc, item) => {
     acc[item.category] = (acc[item.category] || 0) + Number(item.amount);
     return acc;
   }, {});
   const rows = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+  const max = Math.max(...rows.map(([, value]) => value), 0);
   const target = document.querySelector("#category-breakdown");
 
   if (!rows.length) {
@@ -696,19 +654,15 @@ function renderCategoryBreakdown() {
   }
 
   target.innerHTML = rows
-    .slice(0, 6)
     .map(([key, value]) => {
       const [, label, color] = getCategory("expense", key);
-      const percentage = totalExpense ? (value / totalExpense) * 100 : 0;
+      const width = max ? (value / max) * 100 : 0;
       return `
-        <article class="category-insight-card" style="--card-color:${color}">
-          <div class="category-insight-top">
-            <span class="category-insight-dot"></span>
-            <strong>${esc(label)}</strong>
-            <small>${percentage.toFixed(0)}%</small>
-          </div>
-          <strong class="money negative">${money(value)}</strong>
-        </article>
+        <div class="category-row">
+          <strong>${esc(label)}</strong>
+          <span class="money negative">${money(value)}</span>
+          <div class="bar"><span style="--value:${width}%;--color:${color}"></span></div>
+        </div>
       `;
     })
     .join("");
@@ -1400,7 +1354,6 @@ function renderChart() {
 }
 
 function renderAll() {
-  renderOverviewContext();
   renderMonthLabel();
   renderSummary();
   renderCategoryBreakdown();
@@ -1977,7 +1930,7 @@ async function initSupabase() {
   state.supabaseClient = window.supabase.createClient(config.url, config.anonKey);
   state.cloudReady = true;
 
-  state.isPasswordRecovery = isRecoveryFlowFromUrl();
+  state.isPasswordRecovery = location.hash.includes("type=recovery") || location.hash.includes("access_token=");
   if (state.isPasswordRecovery) {
     showAuthView("update-password");
     renderAuthGate("Defina sua nova senha para continuar.");
@@ -2075,7 +2028,6 @@ function renderAuthGate(message) {
   els.authScreen.classList.toggle("is-hidden", isLogged);
   els.appShell.classList.toggle("is-hidden", !isLogged);
   els.sidebar.classList.toggle("is-hidden", !isLogged);
-  if (els.mobileNav) els.mobileNav.classList.toggle("is-hidden", !isLogged);
   if (message) els.authNote.textContent = message;
   else if (!state.cloudReady) els.authNote.textContent = "Preparando acesso...";
   else els.authNote.textContent = isLogged ? "Sessao conectada." : "Entre para continuar.";
@@ -2083,16 +2035,6 @@ function renderAuthGate(message) {
 
 function isEmailConfirmed(user) {
   return Boolean(user?.email_confirmed_at || user?.confirmed_at);
-}
-
-function readUrlAuthType() {
-  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  const searchParams = new URLSearchParams(window.location.search);
-  return hashParams.get("type") || searchParams.get("type") || "";
-}
-
-function isRecoveryFlowFromUrl() {
-  return readUrlAuthType() === "recovery";
 }
 
 async function requestPasswordReset(event) {
@@ -2565,6 +2507,11 @@ function bindEvents() {
     state.currentDate = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth() + 1, 1);
     renderAll();
   });
+  document.querySelector("#open-transaction").addEventListener("click", () => {
+    location.hash = "novo-lancamento";
+    setSectionFromHash();
+    document.querySelector("#description").focus();
+  });
   document.querySelector("#go-to-new-transaction").addEventListener("click", () => {
     location.hash = "novo-lancamento";
     setSectionFromHash();
@@ -2575,6 +2522,7 @@ function bindEvents() {
     location.hash = "lancamentos-mes";
     setSectionFromHash();
   });
+  document.querySelector("#seed-data").addEventListener("click", seedData);
   document.querySelector("#install-app").addEventListener("click", promptInstallApp);
   document.querySelectorAll(".segment").forEach((button) =>
     button.addEventListener("click", () => setActiveType(button.dataset.type))
@@ -2821,7 +2769,6 @@ function setSectionFromHash() {
   document.querySelectorAll(".nav-item").forEach((item) => {
     item.classList.toggle("active", item.dataset.section === id);
   });
-  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 async function init() {
