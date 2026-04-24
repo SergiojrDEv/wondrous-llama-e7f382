@@ -1,5 +1,4 @@
 import { defaultSettings, formatter, state } from "./state.js";
-import { getCatalogAccount, getCatalogCategory, getCatalogCreditCard, getCatalogTag } from "./catalog.js";
 
 export function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -114,59 +113,9 @@ export function getSubcategoryColor(type, categoryKey, subcategoryKey) {
 }
 
 export function categoryDisplayLabel(item) {
-  const categoryRecord = resolveTransactionCategory(item);
-  const categoryLabel = categoryRecord?.name || getCategory(item.type, item.category)[1];
-  const tagRecord = resolveTransactionTag(item, categoryRecord);
-  const subLabel = tagRecord?.name || getSubcategoryLabel(item.type, item.category, item.subcategory);
+  const [, categoryLabel] = getCategory(item.type, item.category);
+  const subLabel = getSubcategoryLabel(item.type, item.category, item.subcategory);
   return subLabel ? `${categoryLabel} / ${subLabel}` : categoryLabel;
-}
-
-export function resolveTransactionCategory(item) {
-  return getCatalogCategory(state.catalog, item.type, item.category, item.categoryId || null);
-}
-
-export function resolveTransactionTag(item, categoryRecord = resolveTransactionCategory(item)) {
-  const categorySlug = categoryRecord?.slug || item.category;
-  return getCatalogTag(state.catalog, item.type, categorySlug, item.subcategory, item.categoryTagId || null);
-}
-
-export function resolveTransactionAccount(item) {
-  return getCatalogAccount(state.catalog, item.account, item.accountId || null);
-}
-
-export function resolveTransactionCreditCard(item) {
-  return getCatalogCreditCard(state.catalog, item.creditCardId || item.credit_card_id || null);
-}
-
-export function syncTransactionRefs(item) {
-  const categoryRecord = resolveTransactionCategory(item);
-  if (categoryRecord) {
-    item.category = categoryRecord.slug;
-    item.categoryId = categoryRecord.id;
-  } else {
-    item.categoryId = null;
-  }
-
-  const tagRecord = resolveTransactionTag(item, categoryRecord);
-  if (tagRecord) {
-    item.subcategory = tagRecord.slug;
-    item.categoryTagId = tagRecord.id;
-  } else {
-    item.categoryTagId = null;
-  }
-
-  const accountRecord = resolveTransactionAccount(item);
-  if (accountRecord) {
-    item.account = accountRecord.name;
-    item.accountId = accountRecord.id;
-  } else {
-    item.accountId = null;
-  }
-
-  const cardRecord = resolveTransactionCreditCard(item);
-  item.creditCardId = cardRecord?.id || item.creditCardId || null;
-
-  return item;
 }
 
 export function paymentMethodLabel(value) {

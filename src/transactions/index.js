@@ -5,17 +5,12 @@ import {
   createId,
   esc,
   getMonthTransactions,
-  resolveTransactionAccount,
-  resolveTransactionCategory,
-  resolveTransactionCreditCard,
-  resolveTransactionTag,
   getSubcategories,
   money,
   parseLocalDate,
   paymentMethodLabel,
   slugify,
   simplifyFieldName,
-  syncTransactionRefs,
   toDateInput,
 } from "../core/utils.js";
 
@@ -155,10 +150,7 @@ export function createTransactionsModule(deps) {
     const filtered = monthTransactions
       .filter((item) => state.typeFilter === "all" || item.type === state.typeFilter)
       .filter((item) => {
-        const categoryLabel = resolveTransactionCategory(item)?.name || item.category;
-        const tagLabel = resolveTransactionTag(item)?.name || item.subcategory || "";
-        const accountLabel = resolveTransactionAccount(item)?.name || item.account;
-        const haystack = `${item.description} ${item.category} ${categoryLabel} ${item.subcategory || ""} ${tagLabel} ${accountLabel} ${item.paymentMethod || ""}`.toLowerCase();
+        const haystack = `${item.description} ${item.category} ${item.subcategory || ""} ${item.account} ${item.paymentMethod || ""}`.toLowerCase();
         return haystack.includes(state.search.toLowerCase());
       })
       .sort((a, b) => b.date.localeCompare(a.date));
@@ -180,7 +172,7 @@ export function createTransactionsModule(deps) {
             <td>${parseLocalDate(item.date).toLocaleDateString("pt-BR")}</td>
             <td><strong>${esc(item.description)}</strong></td>
             <td><span class="category-pill">${esc(categoryDisplayLabel(item))}</span></td>
-            <td>${esc(resolveTransactionAccount(item)?.name || item.account)}</td>
+            <td>${esc(item.account)}</td>
             <td><span class="type-pill ${item.status || "paid"}">${statusLabel}</span></td>
             <td><span class="payment-pill ${item.paymentMethod || "pix"}">${paymentMethodLabel(item.paymentMethod)}</span></td>
             <td>${item.dueDate ? parseLocalDate(item.dueDate).toLocaleDateString("pt-BR") : "-"}</td>
@@ -220,7 +212,7 @@ export function createTransactionsModule(deps) {
       const date = addMonths(formData.get("date"), index);
       const dueDate = formData.get("dueDate") ? addMonths(formData.get("dueDate"), index) : date;
       const suffix = installments > 1 ? ` (${index + 1}/${installments})` : recurrence === "monthly" && totalItems > 1 ? ` (${index + 1}/${totalItems})` : "";
-      return syncTransactionRefs({
+      return {
         id: createId(),
         type: state.activeType,
         description: `${formData.get("description").trim()}${suffix}`,
@@ -239,7 +231,7 @@ export function createTransactionsModule(deps) {
         installmentNumber: installments > 1 ? index + 1 : null,
         installmentTotal: installments > 1 ? installments : null,
         createdAt: new Date().toISOString(),
-      });
+      };
     });
 
     state.transactions.push(...transactions);
@@ -271,7 +263,6 @@ export function createTransactionsModule(deps) {
       item.installmentNumber = null;
       item.installmentTotal = null;
     }
-    syncTransactionRefs(item);
     deps.persist();
     resetTransactionForm();
     deps.renderAll();
@@ -288,14 +279,14 @@ export function createTransactionsModule(deps) {
     document.querySelector("#transaction-modal-description").value = item.description;
     document.querySelector("#transaction-modal-category").value = item.category;
     updateTransactionModalSubcategoryOptions(item.subcategory || "");
-    document.querySelector("#transaction-modal-account").value = resolveTransactionAccount(item)?.name || item.account;
+    document.querySelector("#transaction-modal-account").value = item.account;
     document.querySelector("#transaction-modal-amount").value = item.amount;
     document.querySelector("#transaction-modal-date").value = item.date;
     document.querySelector("#transaction-modal-due-date").value = item.dueDate || item.date;
     document.querySelector("#transaction-modal-status").value = item.status || "paid";
     document.querySelector("#transaction-modal-payment-method").value = item.paymentMethod || "pix";
     updateTransactionModalCreditFields();
-    document.querySelector("#transaction-modal-credit-card").value = resolveTransactionCreditCard(item)?.id || item.creditCardId || "";
+    document.querySelector("#transaction-modal-credit-card").value = item.creditCardId || "";
     document.querySelector("#transaction-modal-overlay").classList.remove("is-hidden");
     document.body.classList.add("modal-open");
     document.querySelector("#transaction-modal-description").focus();
@@ -350,7 +341,6 @@ export function createTransactionsModule(deps) {
       return deps.notify("Preencha os dados do lancamento corretamente.");
     }
 
-    syncTransactionRefs(item);
     deps.persist();
     deps.renderAll();
     closeTransactionModal();
@@ -362,7 +352,6 @@ export function createTransactionsModule(deps) {
     if (!item) return;
     item.status = "paid";
     item.date = toDateInput(new Date());
-    syncTransactionRefs(item);
     deps.persist();
     deps.renderAll();
     deps.notify("Lancamento marcado como pago.");
@@ -435,7 +424,7 @@ export function createTransactionsModule(deps) {
     const paymentMethod = normalizePaymentMethod(getImportedField(row, "payment"));
     const isCredit = paymentMethod === "credit";
 
-    return syncTransactionRefs({
+    return {
       id: row.id || createId(),
       type,
       description,
@@ -454,7 +443,7 @@ export function createTransactionsModule(deps) {
       installmentNumber: isCredit ? row.installmentNumber || row.installment_number || null : null,
       installmentTotal: isCredit ? row.installmentTotal || row.installment_total || null : null,
       createdAt: row.createdAt || row.created_at || new Date().toISOString(),
-    });
+    };
   }
 
   function normalizeImportedBackup(imported) {
@@ -576,7 +565,7 @@ export function createTransactionsModule(deps) {
       ["income", "Projeto freelance", "freelance", "Conta corrente", 1300, 24],
     ];
 
-    state.transactions = samples.map(([type, description, category, account, amount, day]) => syncTransactionRefs({
+    state.transactions = samples.map(([type, description, category, account, amount, day]) => ({
       id: createId(),
       type,
       description,

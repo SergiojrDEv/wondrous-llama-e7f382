@@ -1,11 +1,5 @@
 import { SUPABASE_FALLBACK_CONFIG, state } from "../core/state.js";
-import {
-  buildCatalogFromV2,
-  ensureCatalogCoversTransactions,
-  getCatalogAccount,
-  getCatalogCategory,
-  getCatalogTag,
-} from "../core/catalog.js";
+import { buildCatalogFromV2, ensureCatalogCoversTransactions } from "../core/catalog.js";
 
 export function createSupabaseModule(deps) {
   function isMissingRelationError(error) {
@@ -171,11 +165,8 @@ export function createSupabaseModule(deps) {
       type: row.transaction_kind,
       description: row.description || "",
       category: category?.slug || "outros",
-      categoryId: row.category_id || category?.id || null,
       subcategory: tag?.slug || null,
-      categoryTagId: row.category_tag_id || tag?.id || null,
       account: account?.name || "Conta corrente",
-      accountId: row.account_id || account?.id || null,
       amount: Number(row.amount || 0),
       date: row.transaction_date,
       dueDate: row.due_date || row.transaction_date,
@@ -255,17 +246,10 @@ export function createSupabaseModule(deps) {
     state.transactions = txRows.map((row) => fromV2Transaction(row, refs));
     state.transactions.forEach((item) => {
       const legacy = legacyById.get(item.id);
-      if (legacy) {
-        if ((item.category === "outros" || !item.category) && legacy.cat) item.category = legacy.cat;
-        if (!item.subcategory && legacy.subcat) item.subcategory = legacy.subcat;
-        if (!item.type && legacy.type) item.type = legacy.type;
-      }
-      const category = getCatalogCategory(state.catalog, item.type, item.category, item.categoryId);
-      const tag = getCatalogTag(state.catalog, item.type, category?.slug || item.category, item.subcategory, item.categoryTagId);
-      const account = getCatalogAccount(state.catalog, item.account, item.accountId);
-      item.categoryId = category?.id || item.categoryId || null;
-      item.categoryTagId = tag?.id || item.categoryTagId || null;
-      item.accountId = account?.id || item.accountId || null;
+      if (!legacy) return;
+      if ((item.category === "outros" || !item.category) && legacy.cat) item.category = legacy.cat;
+      if (!item.subcategory && legacy.subcat) item.subcategory = legacy.subcat;
+      if (!item.type && legacy.type) item.type = legacy.type;
     });
     deps.save();
     deps.updateCategoryOptions();
@@ -465,12 +449,9 @@ export function createSupabaseModule(deps) {
     const tagKeyToId = new Map((currentTags || []).map((item) => [`${item.category_id}:${item.slug}`, item.id]));
 
     const rows = state.transactions.map((item) => {
-      const category = item.categoryId
-        ? [...categoryRecords.values()].find((entry) => entry.id === item.categoryId) || categoryRecords.get(`${item.type}:${item.category}`)
-        : categoryRecords.get(`${item.type}:${item.category}`);
+      const category = categoryRecords.get(`${item.type}:${item.category}`);
       const categoryId = category?.id || null;
-      const categoryTagId = item.categoryTagId || (categoryId && item.subcategory ? tagKeyToId.get(`${categoryId}:${item.subcategory}`) || null : null);
-      const accountId = item.accountId || accountNameToId.get(String(item.account || "Conta corrente").toLowerCase()) || null;
+      const categoryTagId = categoryId && item.subcategory ? tagKeyToId.get(`${categoryId}:${item.subcategory}`) || null : null;
       return {
         id: item.id,
         user_id: userId,
@@ -482,7 +463,7 @@ export function createSupabaseModule(deps) {
         due_date: item.dueDate || item.date,
         category_id: categoryId,
         category_tag_id: categoryTagId,
-        account_id: accountId,
+        account_id: accountNameToId.get(String(item.account || "Conta corrente").toLowerCase()) || null,
         credit_card_id: item.creditCardId || null,
         payment_method: item.paymentMethod || "pix",
         recurring_rule_id: item.recurrenceId || null,

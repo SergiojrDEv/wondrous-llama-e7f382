@@ -9,7 +9,6 @@ import {
   monthKey,
   parseLocalDate,
   paymentMethodLabel,
-  resolveTransactionCategory,
   toDateInput,
 } from "../core/utils.js";
 
@@ -177,19 +176,11 @@ export function createDashboardModule(deps) {
   function renderCategoryBreakdown() {
     const expenses = getMonthTransactions().filter((item) => item.type === "expense");
     const totals = expenses.reduce((acc, item) => {
-      const category = resolveTransactionCategory(item);
-      const bucketKey = category?.id || `${item.type}:${item.category}`;
-      acc[bucketKey] ||= {
-        slug: category?.slug || item.category,
-        label: category?.name || getCategory("expense", item.category)[1],
-        color: category?.color || getCategory("expense", item.category)[2],
-        total: 0,
-      };
-      acc[bucketKey].total += Number(item.amount);
+      acc[item.category] = (acc[item.category] || 0) + Number(item.amount);
       return acc;
     }, {});
-    const rows = Object.values(totals).sort((a, b) => b.total - a.total);
-    const max = Math.max(...rows.map((item) => item.total), 0);
+    const rows = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+    const max = Math.max(...rows.map(([, value]) => value), 0);
     const target = document.querySelector("#category-breakdown");
 
     if (!rows.length) {
@@ -198,13 +189,14 @@ export function createDashboardModule(deps) {
     }
 
     target.innerHTML = rows
-      .map((row) => {
-        const width = max ? (row.total / max) * 100 : 0;
+      .map(([key, value]) => {
+        const [, label, color] = getCategory("expense", key);
+        const width = max ? (value / max) * 100 : 0;
         return `
           <div class="category-row">
-            <strong>${esc(row.label)}</strong>
-            <span class="money negative">${money(row.total)}</span>
-            <div class="bar"><span style="--value:${width}%;--color:${row.color}"></span></div>
+            <strong>${esc(label)}</strong>
+            <span class="money negative">${money(value)}</span>
+            <div class="bar"><span style="--value:${width}%;--color:${color}"></span></div>
           </div>
         `;
       })
