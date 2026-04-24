@@ -263,3 +263,34 @@ export function ensureCatalogCoversTransactions(catalog, transactions = []) {
 
   return nextCatalog;
 }
+
+export function getCatalogCategory(catalog, kind, slug, id = null) {
+  const categories = catalog?.categories || [];
+  if (id) {
+    const byId = categories.find((item) => item.id === id && !item.isArchived);
+    if (byId) return byId;
+  }
+  return categories.find((item) => item.kind === kind && item.slug === slug && !item.isArchived) || null;
+}
+
+export function getCatalogTag(catalog, kind, categorySlug, slug, id = null) {
+  const tags = catalog?.tags || [];
+  if (id) {
+    const byId = tags.find((item) => item.id === id && !item.isArchived);
+    if (byId) return byId;
+  }
+  return tags.find((item) => item.kind === kind && item.categorySlug === categorySlug && item.slug === slug && !item.isArchived) || null;
+}
+
+export function getCatalogAccount(catalog, name, id = null) {
+  const accounts = catalog?.accounts || [];
+  if (id) {
+    const byId = accounts.find((item) => item.id === id && !item.isArchived);
+    if (byId) return byId;
+  }
+  return accounts.find((item) => item.name === name && !item.isArchived) || null;
+}
+
+export function getCatalogCreditCard(catalog, id) {
+  return (catalog?.creditCards || []).find((item) => item.id === id && !item.isArchived) || null;
+}
